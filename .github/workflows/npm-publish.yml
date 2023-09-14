@@ -11,6 +11,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Install dependencies
+        run: npm ci
+      # - name: Run lint
+      #   run: npm run lint
+      # - name: Run tests
+      #   run: npm run test
+
+  publish_and_release:
+    needs: build
+    environment: "${{ github.ref_name == 'main' && 'prod' || '' }}"
+    runs-on: ubuntu-latest
+    steps:
       - name: Generate token
         if: ${{ github.ref_name == 'main'}}
         id: generate_token
@@ -23,29 +39,15 @@ jobs:
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org
-
+  
       - uses: actions/checkout@v3
         with:
-          # pulls all commits and tags (needed for lerna to correctly version)
-          fetch-depth: 0
           token: ${{ github.ref_name == 'main' && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
 
       - name: Setup git
         run: |
           git config --global user.email "fundabot@fundwave.com"
           git config --global user.name "fundabot"
-      - name: Install dependencies
-        run: npm ci
-      - name: Run lint
-        run: npm run lint
-      - name: Run tests
-        run: npm run test
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
 
       - name: Version bump
         id: version
@@ -62,13 +64,10 @@ jobs:
           skip-commit: "true"
           bump-policy: "ignore"
 
-      - name: Release
+      - name: Publish package
+        run: npm publish --tag $BRANCH_TAG --access public
         env:
-          VERSION: ${{ steps.version.outputs.newTag }}
-        run: |
-          if [ "${BRANCH}" != "main" ]; then PRERELEASE="-p"; fi
-          echo "Releasing version ${VERSION} on branch ${BRANCH}"
-          gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
+          NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
 
       - name: Commit changes
         env:
@@ -76,7 +75,7 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
-          git commit -a -m "CI: bumps fundwave/fetch-queue to $VERSION"
+          git commit -a -m "CI: bumps @fundwave/fetch-queue to $VERSION"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
@@ -84,20 +83,10 @@ jobs:
           github_token: ${{ env.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
 
-  publish-npmjs:
-    needs: release
-    environment: prod
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: git pull origin ${{ github.ref }}
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          registry-url: https://registry.npmjs.org
-      - name: Install dependencies
-        run: npm ci
-      - name: Publish package
-        run: npm publish --tag $BRANCH_TAG --access public
+      - name: Release
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
+          VERSION: ${{ steps.version.outputs.newTag }}
+        run: |
+          if [ "${BRANCH}" != "main" ]; then PRERELEASE="-p"; fi
+          echo "Releasing version ${VERSION} on branch ${BRANCH}"
+          gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
