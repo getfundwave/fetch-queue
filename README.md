@@ -1,17 +1,17 @@
-# fetchq
+# @fundwave/fetchq
 
 A client-side library that allows you to queue fetch requests.
 
 ## Installation
 
 ```sh
-npm install fetchq
+npm install @fundwave/fetchq
 ```
 
 ## Initialization
 
 ```js
-import { FetchQueue } from "fetchq";
+import { FetchQueue } from "@fundwave/fetchq";
 
 const MyFetchQueue = new FetchQueue({ concurrent: 2 });
 MyFetchQueue.initQueue(); //override global `fetch` with `fetchq`
