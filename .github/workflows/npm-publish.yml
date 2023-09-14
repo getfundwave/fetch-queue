@@ -11,10 +11,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Generate token
+        if: ${{ github.ref_name == 'main'}}
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ vars.FUNDABOT_APP_ID }}
+          private_key: ${{ secrets.FUNDABOT_PRIVATE_KEY }}
+
       - uses: actions/setup-node@v3
         with:
           node-version: 16
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/checkout@v3
+        with:
+          # pulls all commits and tags (needed for lerna to correctly version)
+          fetch-depth: 0
+          token: ${{ github.ref_name == 'main' && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Setup git
+        run: |
+          git config --global user.email "fundabot@fundwave.com"
+          git config --global user.name "fundabot"
       - name: Install dependencies
         run: npm ci
       - name: Run lint
@@ -82,21 +101,3 @@ jobs:
         run: npm publish --tag $BRANCH_TAG --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
-
-  publish-gitlab:
-    needs: release
-    environment: prod
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: git pull origin ${{ github.ref }}
-      - name: Setup .npmrc file for publish
-        env:
-          GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
-        run: |
-          echo @fundwave:registry=https://gitlab.com/api/v4/projects/24877554/packages/npm/ >> ~/.npmrc
-          echo //gitlab.com/api/v4/projects/24877554/packages/npm/:_authToken=$GITLAB_TOKEN >> ~/.npmrc
-      - name: Install dependencies
-        run: npm ci
-      - name: Publish package
-        run: npm publish --tag $BRANCH_TAG
