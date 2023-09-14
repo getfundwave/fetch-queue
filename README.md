@@ -1,22 +1,27 @@
-# fetch-queue
+# fetchq
 
-@fundwave/fetch-queue is a client-side library that allows you to queue your app's fetch requests 
+A client-side library that allows you to queue fetch requests.
 
-## Installation Instructions
+## Installation
 
 ```sh
-npm install @fundwave/fetch-queue
+npm install fetchq
 ```
 
-### Initialization
+## Initialization
 
 ```js
-import { FetchQueue as ApiFetchQueue } from "@fundwave/fetch-queue";
+import { FetchQueue } from "fetchq";
 
-// value of concurrent defaults to 3
-// concurrent defines the number of fetch requests to be send to server at a time
-const FetchQueue = ApiFetchQueue({ concurrent: 2 });
-FetchQueue.initQueue();
-
-// Note: Works with node.js fetch for now.
+const MyFetchQueue = new FetchQueue({ concurrent: 2 });
+MyFetchQueue.initQueue(); //override global `fetch` with `fetchq`
 ```
+
+## Options
+
+| Property   | Description                         | Default Value |
+| ---------- | ----------------------------------- | ------------- |
+| concurrent | number of concurrent fetch requests | 3             |
+
+
+
