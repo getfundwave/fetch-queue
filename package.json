@@ -1,0 +1,26 @@
+{
+  "name": "fetchq",
+  "version": "0.0.0-init.0",
+  "description": "Queue for fetch requests",
+  "main": "src/index.js",
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/getfundwave/fetch-queue.git"
+  },
+  "keywords": [
+    "js",
+    "fetch",
+    "queue"
+  ],
+  "author": "The Fundwave Authors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/getfundwave/fetch-queue/issues"
+  },
+  "homepage": "https://github.com/getfundwave/fetch-queue#readme",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

@@ -12,11 +12,9 @@ export class FetchQueue {
     const fetch = window.fetch;
     let activeRequests = 0;
     const queue = [];
-    const urlInQueue = [];
 
     const run = async (url, options) => {
       activeRequests++;
-      console.log(activeRequests, Date.now(), this.concurrent);
       try {
         const response = await fetch(url, options);
         return response;
@@ -24,8 +22,6 @@ export class FetchQueue {
         activeRequests--;
         if (queue.length > 0) {
           const nextTask = queue.shift();
-          urlInQueue.shift();
-          localStorage.setItem("queue", urlInQueue);
           nextTask();
         }
       }
@@ -41,8 +37,6 @@ export class FetchQueue {
           queue.push(() => {
             task().then(resolve).catch(reject);
           });
-          urlInQueue.push(url.split("/").slice(-1));
-          localStorage.setItem("queue", urlInQueue);
         });
       }
     };
