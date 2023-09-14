@@ -3,7 +3,9 @@
   "version": "0.0.0-init.0",
   "description": "Queue for fetch requests",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
+	"build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,7 @@
   },
   "homepage": "https://github.com/getfundwave/fetch-queue#readme",
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "typescript": "^5.2.2"
   }
 }
