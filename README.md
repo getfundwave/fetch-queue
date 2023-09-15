@@ -19,9 +19,7 @@ MyFetchQueue.initQueue(); //override global `fetch` with `fetchq`
 
 ## Options
 
-| Property   | Description                         | Default Value |
-| ---------- | ----------------------------------- | ------------- |
-| concurrent | number of concurrent fetch requests | 3             |
-
-
-
+| `Property` | `Description`                       | `Default Value` |
+| ---------- | ----------------------------------- | --------------- |
+| concurrent | number of concurrent fetch requests | 3               |
+| debug      | set debug mode                      | false           |

@@ -1,5 +1,9 @@
 export type FetchQueueConfig = {
-    concurrent: number
-}
+  concurrent: number;
+  debug: boolean;
+};
 
-export type FetchQ = (url: RequestInfo | URL, options?: RequestInit) => Promise<Response>
+export type FetchQ = (
+  url: RequestInfo | URL,
+  options?: RequestInit
+) => Promise<Response>;

@@ -9,6 +9,10 @@ export class FetchQueue {
    * The maximum number of concurrent fetch requests allowed.
    */
   private concurrent: number;
+
+  private debug: boolean;
+
+  private urlInQueue?: Array<string>;
   /**
    * The current number of active fetch requests.
    */
@@ -25,8 +29,12 @@ export class FetchQueue {
    */
   constructor(options?: FetchQueueConfig) {
     this.concurrent = options?.concurrent || 3;
+    this.debug = options?.debug || false;
     this.activeRequests = 0;
     this.queue = [];
+    if (this.debug) {
+      this.urlInQueue = [];
+    }
     if (typeof this.concurrent !== "number")
       throw Error("Concurrent should be a number.");
     if (this.concurrent < 0)
@@ -48,6 +56,9 @@ export class FetchQueue {
   ): Promise<Response> => {
     this.activeRequests++;
     try {
+      if (this.debug) {
+        localStorage.setItem("executing", url.toString());
+      }
       const response: Response = await fetch(url, options);
       return response;
     } finally {
@@ -62,6 +73,12 @@ export class FetchQueue {
   private emitRequestCompletedEvent(): void {
     if (this.queue.length > 0) {
       const nextTask = this.queue.shift();
+      if (this.debug && this.urlInQueue != null) {
+        this.urlInQueue!.shift();
+        localStorage.setItem("queue", this.urlInQueue.toString());
+        console.log("queue", localStorage.getItem("queue"));
+        console.log("executing", localStorage.getItem("executing"));
+      }
       nextTask!();
     }
   }
@@ -93,6 +110,12 @@ export class FetchQueue {
             task().then(resolve).catch(reject);
           };
           this.queue.push(queueTask);
+          if (this.debug && this.urlInQueue != null) {
+            this.urlInQueue!.push(
+              url.toString().split("/").slice(-3).join("/")
+            );
+            localStorage.setItem("queue", this.urlInQueue.toString());
+          }
         });
       }
     };
