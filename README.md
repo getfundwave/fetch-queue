@@ -23,3 +23,14 @@ MyFetchQueue.initQueue(); //override global `fetch` with `fetchq`
 | ---------- | ----------------------------------- | --------------- |
 | concurrent | number of concurrent fetch requests | 3               |
 | debug      | set debug mode                      | false           |
+
+
+## Usage
+
+### Get custom fetchq funtion 
+```js
+import { FetchQueue } from "@fundwave/fetchq";
+
+const MyFetchQueue = new FetchQueue({ concurrent: 2 });
+let fetch = MyFetchQueue.getFetch(); // returns custom fetchq funtion
+```

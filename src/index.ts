@@ -1,4 +1,4 @@
-import { FetchQ, FetchQueueConfig } from "./interfaces/index.js";
+import { FetchQ, FetchQueueConfig } from "./interfaces/index.ts";
 
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -10,9 +10,16 @@ export class FetchQueue {
    */
   private concurrent: number;
 
+  /**
+   * Indicates whether debugging is enabled or not.
+   */
   private debug: boolean;
 
+  /**
+   * An optional array of strings representing the URLs in the queue.
+   */
   private urlInQueue?: Array<string>;
+
   /**
    * The current number of active fetch requests.
    */
@@ -88,6 +95,15 @@ export class FetchQueue {
    */
   initQueue() {
     global.fetch = this.f_fetch;
+  }
+
+  /**
+   * Returns the custom fetch function used by the FetchQueue class to handle queuing of fetch requests.
+   *
+   * @returns The custom fetch function.
+   */
+  getFetch() {
+    return this.f_fetch;
   }
 
   /**

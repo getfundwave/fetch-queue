@@ -1,4 +1,4 @@
-import { FetchQueue } from "../src/index.ts";
+import { FetchQueue } from "../src/index.js";
 
 describe("FetchQueue", () => {
   // Initializes FetchQueue with negative concurrent value
