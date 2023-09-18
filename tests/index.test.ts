@@ -14,7 +14,7 @@ describe("FetchQueue", () => {
 
     const mockFetch = jest.fn();
 
-    fetchQueue.initQueue();
+    fetchQueue.createQueue();
 
     fetch("https://example.com", { method: "GET" });
 
@@ -27,7 +27,7 @@ describe("FetchQueue", () => {
 
     const mockFetch = jest.fn();
 
-    fetchQueue.initQueue();
+    fetchQueue.createQueue();
 
     await Promise.all([
       fetchQueue["run"]("https://example.com", mockFetch, { method: "GET" }),
@@ -43,7 +43,7 @@ describe("FetchQueue", () => {
   // Executes multiple fetch requests successfully
   it("should execute multiple fetch requests successfully except one", async () => {
     const fetchQueue = new FetchQueue({ concurrent: 2 });
-    fetchQueue.initQueue();
+    fetchQueue.createQueue();
 
     const urls = [
       "https://example.com/1",

@@ -1,4 +1,6 @@
-import { FetchQ, FetchQueueConfig } from "./interfaces/index.ts";
+import { FetchQ, FetchQueueConfig } from "./interfaces/index.js";
+
+const nodeFetch: FetchQ = fetch;
 
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -16,9 +18,9 @@ export class FetchQueue {
   private debug: boolean;
 
   /**
-   * An optional array of strings representing the URLs in the queue.
+   * An array of strings representing the URLs in the queue.
    */
-  private urlInQueue?: Array<string>;
+  private urlInQueue: Array<string>;
 
   /**
    * The current number of active fetch requests.
@@ -39,13 +41,11 @@ export class FetchQueue {
     this.debug = options?.debug || false;
     this.activeRequests = 0;
     this.queue = [];
-    if (this.debug) {
-      this.urlInQueue = [];
+    this.urlInQueue = [];
+
+    if (typeof this.concurrent !== "number" || this.concurrent <= 0) {
+      throw new Error("Concurrent should be a number greater than zero.");
     }
-    if (typeof this.concurrent !== "number")
-      throw Error("Concurrent should be a number.");
-    if (this.concurrent < 0)
-      throw Error("Concurrent should be greater than zero.");
   }
 
   /**
@@ -81,7 +81,7 @@ export class FetchQueue {
     if (this.queue.length > 0) {
       const nextTask = this.queue.shift();
       if (this.debug && this.urlInQueue != null) {
-        this.urlInQueue!.shift();
+        this.urlInQueue.shift();
         localStorage.setItem("queue", this.urlInQueue.toString());
         console.log("queue", localStorage.getItem("queue"));
         console.log("executing", localStorage.getItem("executing"));
@@ -91,10 +91,18 @@ export class FetchQueue {
   }
 
   /**
-   * Initializes the global fetch function to use the FetchQueue's internal fetch implementation.
+   * Sets the global fetch function to the custom fetch function of the FetchQueue class.
    */
-  initQueue() {
+  public createQueue() {
     global.fetch = this.f_fetch;
+  }
+
+  /**
+   * Resets the queue and sets the global fetch function back to the original fetch function.
+   */
+  public disposeQueue() {
+    this.queue = [];
+    global.fetch = nodeFetch;
   }
 
   /**
@@ -102,7 +110,7 @@ export class FetchQueue {
    *
    * @returns The custom fetch function.
    */
-  getFetch() {
+  public getFetch() {
     return this.f_fetch;
   }
 
@@ -110,8 +118,7 @@ export class FetchQueue {
    * The internal fetch implementation that handles queuing of fetch requests.
    */
   private f_fetch = (() => {
-    const fetch = global.fetch;
-
+    let fetch = global.fetch;
     return (
       url: RequestInfo | URL,
       options?: RequestInit
@@ -127,9 +134,7 @@ export class FetchQueue {
           };
           this.queue.push(queueTask);
           if (this.debug && this.urlInQueue != null) {
-            this.urlInQueue!.push(
-              url.toString().split("/").slice(-3).join("/")
-            );
+            this.urlInQueue.push(url.toString().split("/").slice(-3).join("/"));
             localStorage.setItem("queue", this.urlInQueue.toString());
           }
         });
