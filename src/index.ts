@@ -34,7 +34,7 @@ export class FetchQueue {
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
    * If no options are provided, the default concurrent value is set to 3.
-   * @param options - The FetchQueueConfig object containing the concurrent value.
+   * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
    */
   constructor(options?: FetchQueueConfig) {
     this.concurrent = options?.concurrent || 3;
@@ -81,12 +81,14 @@ export class FetchQueue {
     if (this.queue.length > 0) {
       const nextTask = this.queue.shift();
       if (this.debug && this.urlInQueue != null) {
+        console.log("queue", localStorage.getItem("queue"));
         this.urlInQueue.shift();
         localStorage.setItem("queue", this.urlInQueue.toString());
-        console.log("queue", localStorage.getItem("queue"));
-        console.log("executing", localStorage.getItem("executing"));
       }
       nextTask!();
+    }
+    if (this.debug) {
+      console.log("executing", localStorage.getItem("executing"));
     }
   }
 
@@ -133,7 +135,7 @@ export class FetchQueue {
             task().then(resolve).catch(reject);
           };
           this.queue.push(queueTask);
-          if (this.debug && this.urlInQueue != null) {
+          if (this.debug) {
             this.urlInQueue.push(url.toString().split("/").slice(-3).join("/"));
             localStorage.setItem("queue", this.urlInQueue.toString());
           }
