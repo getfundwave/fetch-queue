@@ -1,6 +1,6 @@
 import { FetchQ, FetchQueueConfig } from "./interfaces/index.js";
 
-const nodeFetch: FetchQ = fetch;
+const originalFetch: FetchQ = fetch;
 
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -78,18 +78,17 @@ export class FetchQueue {
    * Executes the next task in the queue when a fetch request is completed.
    */
   private emitRequestCompletedEvent(): void {
-    if (this.queue.length > 0) {
-      const nextTask = this.queue.shift();
-      if (this.debug && this.urlInQueue != null) {
+    if (this.debug) {
+      console.log("executing", localStorage.getItem("executing"));
+      if (this.urlInQueue.length > 0) {
         console.log("queue", localStorage.getItem("queue"));
         this.urlInQueue.shift();
         localStorage.setItem("queue", this.urlInQueue.toString());
       }
-      nextTask!();
     }
-    if (this.debug) {
-      console.log("executing", localStorage.getItem("executing"));
-    }
+    if (this.queue.length <= 0) return;
+    const nextTask = this.queue.shift();
+    nextTask!();
   }
 
   /**
@@ -104,7 +103,7 @@ export class FetchQueue {
    */
   public disposeQueue() {
     this.queue = [];
-    global.fetch = nodeFetch;
+    global.fetch = originalFetch;
   }
 
   /**
