@@ -23,6 +23,11 @@ export class FetchQueue {
   private urlInQueue: Array<string>;
 
   /**
+   * An array of strings representing the URLs executing.
+   */
+  private executing: Array<string>;
+
+  /**
    * The current number of active fetch requests.
    */
   private activeRequests: number;
@@ -42,6 +47,7 @@ export class FetchQueue {
     this.activeRequests = 0;
     this.queue = [];
     this.urlInQueue = [];
+    this.executing = [];
 
     if (typeof this.concurrent !== "number" || this.concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
@@ -64,9 +70,14 @@ export class FetchQueue {
     this.activeRequests++;
     try {
       if (this.debug) {
-        localStorage.setItem("executing", url.toString());
+        this.executing.push(url.toString());
+        console.log("executing", this.executing);
       }
       const response: Response = await fetch(url, options);
+      if (this.debug) {
+        const index = this.executing.indexOf(url.toString());
+        this.executing.splice(index, 1);
+      }
       return response;
     } finally {
       this.activeRequests--;
@@ -79,11 +90,9 @@ export class FetchQueue {
    */
   private emitRequestCompletedEvent(): void {
     if (this.debug) {
-      console.log("executing", localStorage.getItem("executing"));
       if (this.urlInQueue.length > 0) {
-        console.log("queue", localStorage.getItem("queue"));
+        console.log("queue", this.urlInQueue);
         this.urlInQueue.shift();
-        localStorage.setItem("queue", this.urlInQueue.toString());
       }
     }
     if (this.queue.length <= 0) return;
@@ -136,7 +145,6 @@ export class FetchQueue {
           this.queue.push(queueTask);
           if (this.debug) {
             this.urlInQueue.push(url.toString().split("/").slice(-3).join("/"));
-            localStorage.setItem("queue", this.urlInQueue.toString());
           }
         });
       }
