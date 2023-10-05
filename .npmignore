@@ -1,3 +1,5 @@
 .github/**
-.talismanrc
+src/**
 tests/**
+.talismanrc
+tsconfig.json
