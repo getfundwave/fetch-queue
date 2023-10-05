@@ -1,6 +1,6 @@
 import { FetchQ, FetchQueueConfig } from "./interfaces/index.js";
 
-const originalFetch: FetchQ = fetch;
+const globalFetch: FetchQ = global.fetch;
 
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -10,31 +10,31 @@ export class FetchQueue {
   /**
    * The maximum number of concurrent fetch requests allowed.
    */
-  private concurrent: number;
+  private _concurrent: number;
 
   /**
    * Indicates whether debugging is enabled or not.
    */
-  private debug: boolean;
+  private _debug: boolean;
 
   /**
    * An array of strings representing the URLs in the queue.
    */
-  private urlInQueue: Array<string>;
+  private _urlsQueued: Array<string>;
 
   /**
    * An array of strings representing the URLs executing.
    */
-  private executing: Array<string>;
+  private _urlsExecuting: Array<string>;
 
   /**
    * The current number of active fetch requests.
    */
-  private activeRequests: number;
+  private _activeRequests: number;
   /**
    * A queue of tasks to be executed when a slot becomes available for a new fetch request.
    */
-  private queue: Array<() => void>;
+  private _queue: Array<() => void>;
 
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
@@ -42,14 +42,14 @@ export class FetchQueue {
    * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
    */
   constructor(options?: FetchQueueConfig) {
-    this.concurrent = options?.concurrent || 3;
-    this.debug = options?.debug || false;
-    this.activeRequests = 0;
-    this.queue = [];
-    this.urlInQueue = [];
-    this.executing = [];
+    this._concurrent = options?.concurrent || 3;
+    this._debug = options?.debug || false;
+    this._activeRequests = 0;
+    this._queue = [];
+    this._urlsQueued = [];
+    this._urlsExecuting = [];
 
-    if (typeof this.concurrent !== "number" || this.concurrent <= 0) {
+    if (typeof this._concurrent !== "number" || this._concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
     }
   }
@@ -62,41 +62,41 @@ export class FetchQueue {
    * @param options - The options for the fetch request.
    * @returns A Promise that resolves to the fetch response.
    */
-  private run = async (
-    url: RequestInfo | URL,
+  private _run = async (
     fetch: FetchQ,
+    url: RequestInfo | URL,
     options?: RequestInit
   ): Promise<Response> => {
-    this.activeRequests++;
+    this._activeRequests++;
     try {
-      if (this.debug) {
-        this.executing.push(url.toString());
-        console.log("executing", this.executing);
+      if (this._debug) {
+        this._urlsExecuting.push(url.toString());
+        console.log("executing", this._urlsExecuting);
       }
       const response: Response = await fetch(url, options);
-      if (this.debug) {
-        const index = this.executing.indexOf(url.toString());
-        this.executing.splice(index, 1);
+      if (this._debug) {
+        const index = this._urlsExecuting.indexOf(url.toString());
+        this._urlsExecuting.splice(index, 1);
       }
       return response;
     } finally {
-      this.activeRequests--;
-      this.emitRequestCompletedEvent();
+      this._activeRequests--;
+      this._emitRequestCompletedEvent();
     }
   };
 
   /**
    * Executes the next task in the queue when a fetch request is completed.
    */
-  private emitRequestCompletedEvent(): void {
-    if (this.debug) {
-      if (this.urlInQueue.length > 0) {
-        console.log("queue", this.urlInQueue);
-        this.urlInQueue.shift();
+  private _emitRequestCompletedEvent(): void {
+    if (this._debug) {
+      if (this._urlsQueued.length > 0) {
+        console.log("queue", this._urlsQueued);
+        this._urlsQueued.shift();
       }
     }
-    if (this.queue.length <= 0) return;
-    const nextTask = this.queue.shift();
+    if (this._queue.length <= 0) return;
+    const nextTask = this._queue.shift();
     nextTask!();
   }
 
@@ -104,47 +104,85 @@ export class FetchQueue {
    * Sets the global fetch function to the custom fetch function of the FetchQueue class.
    */
   public createQueue() {
-    global.fetch = this.f_fetch;
+    global.fetch = this._f_fetch;
   }
 
   /**
    * Resets the queue and sets the global fetch function back to the original fetch function.
    */
-  public disposeQueue() {
-    this.queue = [];
-    global.fetch = originalFetch;
+  public destroyQueue() {
+    this._queue = [];
+    global.fetch = globalFetch;
   }
 
   /**
    * Returns the custom fetch function used by the FetchQueue class to handle queuing of fetch requests.
-   *
    * @returns The custom fetch function.
    */
-  public getFetch() {
-    return this.f_fetch;
+  public getFetchMethod() {
+    return this._f_fetch;
+  }
+
+  /**
+   * @returns value of concurrent property
+   */
+  public getConcurrent() {
+    return this._concurrent;
+  }
+
+  /**
+   * set value of concurrent property
+   * @param {number} concurrent
+   */
+  public setConcurrent(concurrent: number) {
+    this._concurrent = concurrent;
+  }
+
+  /**
+   * @returns value of debug property
+   */
+  public getDebug() {
+    return this._debug;
+  }
+
+  /**
+   * set value of debug property
+   * @param {boolean} debug
+   */
+  public setDebug(debug: boolean) {
+    this._debug = debug;
+  }
+
+  /**
+   * @returns Length of queue
+   */
+  public getQueueLength() {
+    return this._queue.length;
   }
 
   /**
    * The internal fetch implementation that handles queuing of fetch requests.
    */
-  private f_fetch = (() => {
-    let fetch = global.fetch;
+  private _f_fetch = (() => {
+    const fetch = global.fetch;
     return (
       url: RequestInfo | URL,
       options?: RequestInit
     ): Promise<Response> => {
-      const task = () => this.run(url, fetch, options);
+      const task = () => this._run(fetch, url, options);
 
-      if (this.activeRequests < this.concurrent) {
+      if (this._activeRequests < this._concurrent) {
         return task();
       } else {
         return new Promise((resolve, reject) => {
           const queueTask = () => {
             task().then(resolve).catch(reject);
           };
-          this.queue.push(queueTask);
-          if (this.debug) {
-            this.urlInQueue.push(url.toString().split("/").slice(-3).join("/"));
+          this._queue.push(queueTask);
+          if (this._debug) {
+            this._urlsQueued.push(
+              url.toString().split("/").slice(-3).join("/")
+            );
           }
         });
       }
