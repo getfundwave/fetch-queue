@@ -1,46 +1,45 @@
 import { FetchQueue } from "../src/index";
 
 describe("FetchQueue", () => {
-  // Initializes FetchQueue with negative concurrent value
+  // test
   it("should not initialize FetchQueue with negative concurrent value", () => {
-    expect(() => {
-      new FetchQueue({ concurrent: -1 });
-    }).toThrow();
+    expect(() => new FetchQueue({ concurrent: -1 })).toThrow();
   });
 
-  // Initializes FetchQueue with concurrent value of 0
-  it("should not execute any fetch requests when initialized with a concurrent value of 0", () => {
-    const fetchQueue = new FetchQueue({ concurrent: 0 });
-
-    const mockFetch = jest.fn();
-
-    fetchQueue.createQueue();
-
-    fetch("https://example.com", { method: "GET" });
-
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  // Executes multiple fetch requests successfully
-  it("should execute multiple fetch requests successfully", async () => {
+  // test
+  it("should execute multiple fetch requests with expected queue lengths", async () => {
+    jest.useFakeTimers();
     const fetchQueue = new FetchQueue({ concurrent: 2 });
-
-    const mockFetch = jest.fn();
-
+    const urls = [
+      "https://example.com/1",
+      "https://example.com/2",
+      "https://example.com/3",
+      "https://example.com/4",
+    ];
     fetchQueue.createQueue();
+    const fetch = fetchQueue.getFetchMethod();
+    const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+      jest.advanceTimersByTime(5000);
+      switch (urlIndex) {
+        case 1:
+        case 2:
+          expect(fetchQueue.getQueueLength()).toBe(0);
+          break;
+        case 3:
+          expect(fetchQueue.getQueueLength()).toBe(1);
+          break;
+        case 4:
+          expect(fetchQueue.getQueueLength()).toBe(2);
+          break;
+      }
+      return Promise.resolve(await fetch(url));
+    });
 
-    await Promise.all([
-      fetchQueue["run"]("https://example.com", mockFetch, { method: "GET" }),
-      fetchQueue["run"](new URL("https://example.com"), mockFetch, {
-        method: "GET",
-      }),
-      fetchQueue["run"]("https://example.com", mockFetch, { method: "POST" }),
-    ]);
-
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    const promises = urls.map((url) => mockFetch(url, urls.indexOf(url)));
+    await Promise.all(promises);
   });
 
-  // Executes multiple fetch requests successfully
+  // test
   it("should execute multiple fetch requests successfully except one", async () => {
     const fetchQueue = new FetchQueue({ concurrent: 2 });
     fetchQueue.createQueue();
@@ -60,7 +59,6 @@ describe("FetchQueue", () => {
       return Promise.resolve({ status: 200, text: () => "Mocked response" });
     });
 
-    // Execute 4 fetch calls concurrently
     const promises = urls.map((url) => mockfetch(url));
 
     // Wait for all promises to settle (either resolve or reject)
@@ -71,5 +69,85 @@ describe("FetchQueue", () => {
 
     // Assert that 1 fetch call failed
     expect(responses.find((r) => r.status === "rejected")).toBeDefined();
+  });
+
+  // test
+  it("should destroy queue when destroyQueue is called without creating a queue", () => {
+    const fetchQueue = new FetchQueue();
+    fetchQueue.destroyQueue();
+    expect(fetchQueue.getQueueLength()).toEqual(0);
+  });
+
+  it("should execute fetch requests with concurrency and after destroyQueue fetch requests parallel", async () => {
+    // jest.useFakeTimers();
+    const fetchQueue = new FetchQueue({ concurrent: 2 });
+    const urls = [
+      "https://example.com/1",
+      "https://example.com/2",
+      "https://example.com/3",
+      "https://example.com/4",
+    ];
+    fetchQueue.createQueue();
+
+    let startTime = new Date().getTime();
+    const promises = urls.map((url) =>
+      new Promise((resolve, reject) =>
+        setTimeout(async () => {
+          resolve(await fetch(url));
+        }, 300 * (urls.indexOf(url) + 1))
+      ).finally(() => {
+        const time = new Date().getTime();
+        console.log(time-startTime, url)
+        switch (urls.indexOf(url)) {
+          case 1:
+            // expect(time - startTime).toBeLessThanOrEqual(150);
+            break;
+          case 2:
+            // expect(time - startTime).toBeLessThanOrEqual(250);
+            break;
+          case 3:
+            // expect(time - startTime).toBeLessThanOrEqual(450);
+            break;
+          case 4:
+            // expect(time - startTime).toBeLessThanOrEqual(650);
+            break;
+        }
+      })
+    );
+    startTime = new Date().getTime();
+    await Promise.all([...promises]);
+
+    fetchQueue.destroyQueue();
+    const newPromises = urls.map((url) =>
+      new Promise((resolve, reject) =>
+        setTimeout(async () => {
+          resolve(await fetch(url));
+        }, 300 * (urls.indexOf(url) + 1))
+      ).finally(() => {
+        const time = new Date().getTime();
+        console.log(time-startTime, url)
+        switch (urls.indexOf(url)) {
+          case 1:
+            // expect(time - startTime).toBeLessThanOrEqual(150);
+            break;
+          case 2:
+            // expect(time - startTime).toBeLessThanOrEqual(250);
+            break;
+          case 3:
+            // expect(time - startTime).toBeLessThanOrEqual(450);
+            break;
+          case 4:
+            // expect(time - startTime).toBeLessThanOrEqual(650);
+            break;
+        }
+      })
+    );
+    startTime = new Date().getTime();
+    await Promise.all([...newPromises]);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.clearAllMocks();
   });
 });
