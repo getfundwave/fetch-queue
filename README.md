@@ -14,7 +14,8 @@ npm install @fundwave/fetchq
 import { FetchQueue } from "@fundwave/fetchq";
 
 const MyFetchQueue = new FetchQueue({ concurrent: 2 });
-MyFetchQueue.createQueue(); // Assigns the custom fetch function to the global fetch variable.
+// returns custom fetch function with queueing enabled.
+const fetch = MyFetchQueue.getFetchMethod();
 ```
 
 ## Options
@@ -26,32 +27,29 @@ MyFetchQueue.createQueue(); // Assigns the custom fetch function to the global f
 
 ## Usage
 
-### Destroy queue
-
-The `createQueue()` method sets the global fetch function to the custom fetch function of the `FetchQueue` class, while the `destroyQueue()` method resets the queue and sets the global fetch function back to the original fetch function.
-
 ```js
 import { FetchQueue } from "@fundwave/fetchq";
 
-const fetchQueue = new FetchQueue();
-fetchQueue.createQueue();
-
-// ... perform fetch requests using the custom fetch function ...
-
-fetchQueue.destroyQueue(); // Clears the queue and restores the original fetch function.
-```
-
-### Get custom fetch function
-
-The `getFetchMethod` method returns the custom fetch function used by the `FetchQueue` class to handle queuing of fetch requests.
-
-```js
-import { FetchQueue } from "@fundwave/fetchq";
-
-const fetchQueue = new FetchQueue();
+const fetchQueue = new FetchQueue(); // concurent defaults to 3
 const customFetch = fetchQueue.getFetchMethod();
 
-const url = "..."
+const urls = [...]
 const options = {...}
-let response = await customFetch(url, options);
+
+const promises = urls.map(async (url) => await customFetch(url, options))
+const responses = await Promise.all(promises);
+```
+
+```js
+// get queue length at real time
+console.log(fetchQueue.getQueueLength());
+```
+
+```js
+// getters and setters
+fetchQueue.setConcurrent(5);
+console.log(fetchedQueue.getConcurrent()); // output: 5
+
+fetchQueue.setDebug(true);
+console.log(fetchedQueue.getDebug()); // output: true
 ```

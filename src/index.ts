@@ -1,7 +1,6 @@
-import { FetchQ, FetchQueueConfig } from "./interfaces/index.js";
-
-const globalFetch: FetchQ = global.fetch;
-
+import fetch from "node-fetch";
+import { FetchQueueConfig } from "./interfaces/index.js";
+import {RequestInfo, RequestInit, Response} from "node-fetch"
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
  * It ensures that the number of active requests does not exceed a specified limit, and queues any additional requests until a slot becomes available.
@@ -63,8 +62,7 @@ export class FetchQueue {
    * @returns A Promise that resolves to the fetch response.
    */
   private _run = async (
-    fetch: FetchQ,
-    url: RequestInfo | URL,
+    url: URL | RequestInfo,
     options?: RequestInit
   ): Promise<Response> => {
     this._activeRequests++;
@@ -99,22 +97,7 @@ export class FetchQueue {
     const nextTask = this._queue.shift();
     nextTask!();
   }
-
-  /**
-   * Sets the global fetch function to the custom fetch function of the FetchQueue class.
-   */
-  public createQueue() {
-    global.fetch = this._f_fetch;
-  }
-
-  /**
-   * Resets the queue and sets the global fetch function back to the original fetch function.
-   */
-  public destroyQueue() {
-    this._queue = [];
-    global.fetch = globalFetch;
-  }
-
+  
   /**
    * Returns the custom fetch function used by the FetchQueue class to handle queuing of fetch requests.
    * @returns The custom fetch function.
@@ -164,12 +147,11 @@ export class FetchQueue {
    * The internal fetch implementation that handles queuing of fetch requests.
    */
   private _f_fetch = (() => {
-    const fetch = global.fetch;
     return (
       url: RequestInfo | URL,
       options?: RequestInit
     ): Promise<Response> => {
-      const task = () => this._run(fetch, url, options);
+      const task = () => this._run(url, options);
 
       if (this._activeRequests < this._concurrent) {
         return task();
