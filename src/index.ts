@@ -86,7 +86,7 @@ export class FetchQueue {
   /**
    * Executes the next task in the queue when a fetch request is completed.
    */
-  private _emitRequestCompletedEvent(): void {
+  private _emitRequestCompletedEvent = (): void => {
     if (this._debug) {
       if (this._urlsQueued.length > 0) {
         console.log("queue", this._urlsQueued);

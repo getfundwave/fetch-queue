@@ -21,6 +21,8 @@ jobs:
         run: npm run lint
       - name: Run tests
         run: npm run test
+      - name: Create DOCUMENTATION.md
+        run: npm run docs
 
   publish_and_release:
     needs: build
