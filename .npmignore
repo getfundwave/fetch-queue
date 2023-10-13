@@ -1,0 +1,7 @@
+.github/**
+src/**
+tests/**
+.talismanrc
+tsconfig.json
+jest.config.js
+.eslintrc.json
