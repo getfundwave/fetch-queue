@@ -68,8 +68,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
         run: |
-          git config --global user.email "fundabot@fundwave.com"
-          git config --global user.name "fundabot"
+          git config user.email "fundabot@fundwave.com"
+          git config user.name "fundabot"
           git commit -a -m "CI: bumps @fundwave/fetch-queue to $VERSION"
 
       - name: Publish package to gitlab
