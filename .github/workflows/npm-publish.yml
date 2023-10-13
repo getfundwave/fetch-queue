@@ -21,12 +21,10 @@ jobs:
         run: npm run lint
       - name: Run tests
         run: npm run test
-      - name: Create DOCUMENTATION.md
-        run: npm run docs
 
   publish_and_release:
     needs: build
-    environment: "${{ github.ref_name == 'main' && 'prod' || '' }}"
+    environment: "${{ github.ref_name == 'main' && 'Prod' || '' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Generate token
@@ -40,16 +38,10 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          registry-url: https://registry.npmjs.org
   
       - uses: actions/checkout@v3
         with:
           token: ${{ github.ref_name == 'main' && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
-
-      - name: Setup git
-        run: |
-          git config --global user.email "fundabot@fundwave.com"
-          git config --global user.name "fundabot"
 
       - name: Version bump
         id: version
@@ -66,25 +58,40 @@ jobs:
           skip-commit: "true"
           bump-policy: "ignore"
 
-      - name: Publish package
-        run: npm publish --tag $BRANCH_TAG --access public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
+      - name: Create DOCUMENTATION.md
+        run: npm run docs
 
       - name: Commit changes
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
         run: |
-          git config user.name github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
+          git config --global user.email "fundabot@fundwave.com"
+          git config --global user.name "fundabot"
           git commit -a -m "CI: bumps @fundwave/fetch-queue to $VERSION"
+      
+      - name: Publish package to gitlab
+        env:
+          GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
+        run:  |
+          echo @fundwave:registry=https://gitlab.com/api/v4/projects/24877554/packages/npm/ > ~/.npmrc
+          echo //gitlab.com/api/v4/projects/24877554/packages/npm/:_authToken=$GITLAB_TOKEN >> ~/.npmrc
+          npm publish --tag $BRANCH_TAG
+
+      - name: Publish package to npm
+        if: ${{ github.ref_name == 'main'}}
+        run: |
+          echo //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} > ~/.npmrc
+          echo registry=https://registry.npmjs.org/ >> ~/.npmrc
+          npm publish --tag $BRANCH_TAG --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
 
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ env.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
-
+  
       - name: Release
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
@@ -92,16 +99,3 @@ jobs:
           if [ "${BRANCH}" != "main" ]; then PRERELEASE="-p"; fi
           echo "Releasing version ${VERSION} on branch ${BRANCH}"
           gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
-      
-      - name: Setup .npmrc file for publish
-        env:
-          GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
-        run: |
-          echo @fundwave:registry=https://gitlab.com/api/v4/projects/24877554/packages/npm/ >> ~/.npmrc
-          echo //gitlab.com/api/v4/projects/24877554/packages/npm/:_authToken=$GITLAB_TOKEN >> ~/.npmrc
-
-      - name: Publish gitlab
-        run:  |
-          git pull origin ${{ github.ref }}
-          npm ci
-          npm publish --tag $BRANCH_TAG
