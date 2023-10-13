@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/fetchq",
-  "version": "0.0.1",
+  "version": "0.0.2-init.0",
   "description": "Queue for fetch requests",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
