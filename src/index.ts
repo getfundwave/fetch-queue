@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+const fetch =  require("node-fetch");
 import { FetchQueueConfig } from "./interfaces/index.js";
 import {RequestInfo, RequestInit, Response} from "node-fetch"
 /**
