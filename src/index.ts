@@ -1,6 +1,6 @@
-const fetch =  require("node-fetch");
-import { FetchQueueConfig } from "./interfaces/index.js";
-import {RequestInfo, RequestInit, Response} from "node-fetch"
+const fetch = require("node-fetch");
+import { RequestInfo, RequestInit, Response } from "node-fetch";
+import { FetchQueueConfig } from "./interfaces";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
  * It ensures that the number of active requests does not exceed a specified limit, and queues any additional requests until a slot becomes available.
@@ -96,8 +96,8 @@ export class FetchQueue {
     if (this._queue.length <= 0) return;
     const nextTask = this._queue.shift();
     nextTask!();
-  }
-  
+  };
+
   /**
    * Returns the custom fetch function used by the FetchQueue class to handle queuing of fetch requests.
    * @returns The custom fetch function.
