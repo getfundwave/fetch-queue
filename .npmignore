@@ -5,3 +5,4 @@ tests/**
 tsconfig.json
 jest.config.js
 .eslintrc.json
+jsdoc2md.json
