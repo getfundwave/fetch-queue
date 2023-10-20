@@ -2,6 +2,9 @@
 
 A client-side library that allows you to queue fetch requests.
 
+- Supports ES modules
+- Supports CommonJS
+
 ## Installation
 
 ```sh
