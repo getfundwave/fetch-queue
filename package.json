@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/fetchq",
-  "version": "0.0.2-hybrid-module.4",
+  "version": "0.0.2-hybrid-module.5",
   "description": "Queue for fetch requests",
   "main": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
