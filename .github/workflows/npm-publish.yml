@@ -96,6 +96,7 @@ jobs:
           branch: ${{ github.ref }}
 
       - name: Release
+        if: ${{ github.ref_name == 'main'}}
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
         run: |
