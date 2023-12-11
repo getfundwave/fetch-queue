@@ -13,7 +13,7 @@
     "build:esm": "tsc --module NodeNext --outDir ./dist/esm",
     "build": "tsc --module commonjs --outDir ./dist/cjs",
     "prepare": "npm run build && npm run build:esm",
-    "test": "jest",
+    "test": "jest --detectOpenHandles",
     "lint": "npx eslint src/index.ts",
     "docs": "npx jsdoc-to-markdown ./src/index.ts --configure ./jsdoc2md.json > DOCUMENTATION.md"
   },

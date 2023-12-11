@@ -1,11 +1,6 @@
 import { FetchQueue } from "../src/index";
 
-const urls = [
-  "https://example.com/",
-  "https://github.com/",
-  "https://example.com/3",
-  "https://google.com/",
-];
+const urls = ["https://example.com/", "https://github.com/", "https://example.com/3", "https://google.com/"];
 
 describe("FetchQueue", () => {
   // test
@@ -15,21 +10,20 @@ describe("FetchQueue", () => {
 
   // test
   it("should execute multiple fetch requests with expected queue lengths", async () => {
-    jest.useFakeTimers();
-    const fetchQueue = new FetchQueue({ concurrent: 2 });
+    const fetchQueue = new FetchQueue({ concurrent: 1 });
 
     const fetch = fetchQueue.getFetchMethod();
     const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
       jest.advanceTimersByTime(5000);
       switch (urlIndex) {
+        case 0:
         case 1:
-        case 2:
           expect(fetchQueue.getQueueLength()).toBe(0);
           break;
-        case 3:
+        case 2:
           expect(fetchQueue.getQueueLength()).toBe(1);
           break;
-        case 4:
+        case 3:
           expect(fetchQueue.getQueueLength()).toBe(2);
           break;
       }
@@ -101,7 +95,40 @@ describe("FetchQueue", () => {
   }, 60000);
 
   afterEach(() => {
-    jest.useRealTimers();
     jest.clearAllMocks();
+  });
+});
+
+describe("FetchQueue with configuration", () => {
+  //test
+  it("should not execute fetch request with disableQueue true in config", async () => {
+    const fetchQueue = new FetchQueue({ concurrent: 2, pauseQueueOnInit: true });
+    const fetch = fetchQueue.getFetchMethod();
+
+    const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+      fetch(url);
+      jest.advanceTimersByTime(5000);
+      switch (urlIndex) {
+        case 0:
+        case 1:
+          expect(fetchQueue["_activeRequests"]).toBe(0);
+          break;
+        case 2:
+          expect(fetchQueue["_activeRequests"]).toBe(0);
+          expect(fetchQueue.getQueueLength()).toBe(3);
+          break;
+        case 3:
+          expect(fetchQueue["_activeRequests"]).toBe(0);
+          expect(fetchQueue.getQueueLength()).toBe(4);
+          break;
+      }
+      return Promise.resolve(true);
+    });
+
+    const promises = urls.map((url) => mockFetch(url, urls.indexOf(url)));
+    await Promise.all(promises);
+
+    fetchQueue.startQueue();
+    expect(fetchQueue.getQueueLength()).toBe(3);
   });
 });
