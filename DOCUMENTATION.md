@@ -13,6 +13,8 @@ It ensures that the number of active requests does not exceed a specified limit,
     * [.setConcurrent(concurrent)](#FetchQueue+setConcurrent)
     * [.getDebug()](#FetchQueue+getDebug) ⇒
     * [.setDebug(debug)](#FetchQueue+setDebug)
+    * [.pauseQueue()](#FetchQueue+pauseQueue) ⇒ <code>void</code>
+    * [.startQueue()](#FetchQueue+startQueue) ⇒ <code>void</code>
     * [.getQueueLength()](#FetchQueue+getQueueLength) ⇒
 
 <a name="new_FetchQueue_new"></a>
@@ -65,6 +67,20 @@ If no options are provided, the default concurrent value is set to 3.</p>
 | --- | --- |
 | debug | <code>boolean</code> | 
 
+<a name="FetchQueue+pauseQueue"></a>
+
+### fetchQueue.pauseQueue() ⇒ <code>void</code>
+<p>Disables the queuing of fetch requests in the FetchQueue.
+Sets the <code>_disableQueue</code> property to true and the <code>_activeRequests</code> property to 0.</p>
+
+**Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
+<a name="FetchQueue+startQueue"></a>
+
+### fetchQueue.startQueue() ⇒ <code>void</code>
+<p>Enables the queuing of fetch requests in the FetchQueue.
+Sets the <code>_disableQueue</code> property to false and calls the <code>_emitRequestCompletedEvent</code> method.</p>
+
+**Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
 <a name="FetchQueue+getQueueLength"></a>
 
 ### fetchQueue.getQueueLength() ⇒
