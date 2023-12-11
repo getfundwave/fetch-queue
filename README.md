@@ -56,3 +56,15 @@ console.log(fetchedQueue.getConcurrent()); // output: 5
 fetchQueue.setDebug(true);
 console.log(fetchedQueue.getDebug()); // output: true
 ```
+
+```js
+// start and pause queue
+const fetchQueue = new FetchQueue(concurrent: 3, pauseQueueOnInit: true);
+const customFetch = fetchQueue.getFetchMethod();
+
+// ...some calls
+fetchQueue.startQueue();
+
+// ...some calls
+fetcheQueue.pauseQueue();
+```
