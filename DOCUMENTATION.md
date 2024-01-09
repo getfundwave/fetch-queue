@@ -16,6 +16,7 @@ It ensures that the number of active requests does not exceed a specified limit,
     * [.pauseQueue()](#FetchQueue+pauseQueue) ⇒ <code>void</code>
     * [.startQueue()](#FetchQueue+startQueue) ⇒ <code>void</code>
     * [.getQueueLength()](#FetchQueue+getQueueLength) ⇒
+    * [.getActiveRequests()](#FetchQueue+getActiveRequests) ⇒
 
 <a name="new_FetchQueue_new"></a>
 
@@ -70,15 +71,13 @@ If no options are provided, the default concurrent value is set to 3.</p>
 <a name="FetchQueue+pauseQueue"></a>
 
 ### fetchQueue.pauseQueue() ⇒ <code>void</code>
-<p>Disables the queuing of fetch requests in the FetchQueue.
-Sets the <code>_disableQueue</code> property to true and the <code>_activeRequests</code> property to 0.</p>
+<p>Disables the queuing of fetch requests in the FetchQueue.</p>
 
 **Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
 <a name="FetchQueue+startQueue"></a>
 
 ### fetchQueue.startQueue() ⇒ <code>void</code>
-<p>Enables the queuing of fetch requests in the FetchQueue.
-Sets the <code>_disableQueue</code> property to false and calls the <code>_emitRequestCompletedEvent</code> method.</p>
+<p>Enables the queuing of fetch requests in the FetchQueue.</p>
 
 **Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
 <a name="FetchQueue+getQueueLength"></a>
@@ -86,3 +85,8 @@ Sets the <code>_disableQueue</code> property to false and calls the <code>_emitR
 ### fetchQueue.getQueueLength() ⇒
 **Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
 **Returns**: <p>Length of queue</p>  
+<a name="FetchQueue+getActiveRequests"></a>
+
+### fetchQueue.getActiveRequests() ⇒
+**Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
+**Returns**: <p>Number of active requests</p>  
