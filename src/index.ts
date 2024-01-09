@@ -9,36 +9,36 @@ export class FetchQueue {
   /**
    * The maximum number of concurrent fetch requests allowed.
    */
-  private _concurrent: number;
+  #concurrent: number;
 
   /**
    * Indicates whether debugging is enabled or not.
    */
-  private _debug: boolean;
+  #debug: boolean;
 
   /**
    * An array of strings representing the URLs in the queue.
    */
-  private _urlsQueued: Array<string>;
+  #urlsQueued: Array<string>;
 
   /**
    * An array of strings representing the URLs executing.
    */
-  private _urlsExecuting: Array<string>;
+  #urlsExecuting: Array<string>;
 
   /**
    * The current number of active fetch requests.
    */
-  private _activeRequests: number;
+  #activeRequests: number;
   /**
    * A queue of tasks to be executed when a slot becomes available for a new fetch request.
    */
-  private _queue: Array<() => void>;
+  #queue: Array<() => void>;
 
   /**
-   * If true, Disables task executions but {@link _queue} gets populated.
+   * If true, Disables task executions but {@link #queue} gets populated.
    */
-  private _pauseQueue: boolean;
+  #pauseQueue: boolean;
 
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
@@ -46,15 +46,15 @@ export class FetchQueue {
    * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
    */
   constructor(options?: FetchQueueConfig) {
-    this._concurrent = options?.concurrent || 3;
-    this._debug = options?.debug || false;
-    this._activeRequests = 0;
-    this._queue = [];
-    this._urlsQueued = [];
-    this._urlsExecuting = [];
-    this._pauseQueue = options?.pauseQueueOnInit || false;
+    this.#concurrent = options?.concurrent || 3;
+    this.#debug = options?.debug || false;
+    this.#activeRequests = 0;
+    this.#queue = [];
+    this.#urlsQueued = [];
+    this.#urlsExecuting = [];
+    this.#pauseQueue = options?.pauseQueueOnInit || false;
 
-    if (typeof this._concurrent !== "number" || this._concurrent <= 0) {
+    if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
     }
   }
@@ -67,37 +67,37 @@ export class FetchQueue {
    * @param options - The options for the fetch request.
    * @returns A Promise that resolves to the fetch response.
    */
-  private _run = async (url: URL | RequestInfo, options?: RequestInit): Promise<Response> => {
-    this._activeRequests++;
+  #run = async (url: URL | RequestInfo, options?: RequestInit): Promise<Response> => {
+    this.#activeRequests++;
     try {
-      if (this._debug) {
-        this._urlsExecuting.push(url.toString());
-        console.log("executing", this._urlsExecuting);
+      if (this.#debug) {
+        this.#urlsExecuting.push(url.toString());
+        console.log("executing", this.#urlsExecuting);
       }
       const response: Response = await fetch(url, options);
-      if (this._debug) {
-        const index = this._urlsExecuting.indexOf(url.toString());
-        this._urlsExecuting.splice(index, 1);
+      if (this.#debug) {
+        const index = this.#urlsExecuting.indexOf(url.toString());
+        this.#urlsExecuting.splice(index, 1);
       }
       return response;
     } finally {
-      this._activeRequests--;
-      this._emitRequestCompletedEvent();
+      this.#activeRequests--;
+      this.#emitRequestCompletedEvent();
     }
   };
 
   /**
    * Executes the next task in the queue when a fetch request is completed.
    */
-  private _emitRequestCompletedEvent = (): void => {
-    if (this._debug) {
-      if (this._urlsQueued.length > 0) {
-        console.log("queue", this._urlsQueued);
-        this._urlsQueued.shift();
+  #emitRequestCompletedEvent = (): void => {
+    if (this.#debug) {
+      if (this.#urlsQueued.length > 0) {
+        console.log("queue", this.#urlsQueued);
+        this.#urlsQueued.shift();
       }
     }
-    if (this._queue.length <= 0  || this._pauseQueue) return;
-    const nextTask = this._queue.shift();
+    if (this.#queue.length <= 0 || this.#pauseQueue) return;
+    const nextTask = this.#queue.shift();
     nextTask!();
   };
 
@@ -106,14 +106,14 @@ export class FetchQueue {
    * @returns The custom fetch function.
    */
   public getFetchMethod() {
-    return this._f_fetch;
+    return this.#f_fetch;
   }
 
   /**
    * @returns value of concurrent property
    */
   public getConcurrent() {
-    return this._concurrent;
+    return this.#concurrent;
   }
 
   /**
@@ -121,14 +121,14 @@ export class FetchQueue {
    * @param {number} concurrent
    */
   public setConcurrent(concurrent: number) {
-    this._concurrent = concurrent;
+    this.#concurrent = concurrent;
   }
 
   /**
    * @returns value of debug property
    */
   public getDebug() {
-    return this._debug;
+    return this.#debug;
   }
 
   /**
@@ -136,55 +136,58 @@ export class FetchQueue {
    * @param {boolean} debug
    */
   public setDebug(debug: boolean) {
-    this._debug = debug;
+    this.#debug = debug;
   }
 
   /**
    * Disables the queuing of fetch requests in the FetchQueue.
-   * Sets the `_disableQueue` property to true and the `_activeRequests` property to 0.
-   * 
    * @returns {void}
    */
   public pauseQueue(): void {
-    this._pauseQueue = true;
-    this._activeRequests = 0;
+    this.#pauseQueue = true;
+    this.#activeRequests = 0;
   }
 
   /**
    * Enables the queuing of fetch requests in the FetchQueue.
-   * Sets the `_disableQueue` property to false and calls the `_emitRequestCompletedEvent` method.
-   * 
    * @returns {void}
    */
   public startQueue(): void {
-    this._pauseQueue = false;
-    this._emitRequestCompletedEvent();
+    this.#pauseQueue = false;
+    this.#emitRequestCompletedEvent();
   }
 
   /**
    * @returns Length of queue
    */
-  public getQueueLength() {
-    return this._queue.length;
+  public getQueueLength(): number {
+    return this.#queue.length;
+  }
+
+  /**
+   * @returns Number of active requests
+   */
+  public getActiveRequests(): number {
+    return this.#activeRequests;
   }
 
   /**
    * The internal fetch implementation that handles queuing of fetch requests.
    */
-  private _f_fetch = (() => {
+  #f_fetch = (() => {
     return (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
-      const task = () => this._run(url, options);
+      const task = () => this.#run(url, options);
 
-      if (this._activeRequests < this._concurrent && !this._pauseQueue) {
+      if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
         return task();
       } else {
         return new Promise((resolve, reject) => {
           const queueTask = () => {
             task().then(resolve).catch(reject);
           };
-          this._queue.push(queueTask);
-          if (this._debug) {
-            this._urlsQueued.push(url.toString().split("/").slice(-3).join("/"));
+          this.#queue.push(queueTask);
+          if (this.#debug) {
+            this.#urlsQueued.push(url.toString().split("/").slice(-3).join("/"));
           }
         });
       }

@@ -30,7 +30,7 @@ describe("FetchQueue", () => {
       return Promise.resolve(await fetch(url));
     });
 
-    const promises = urls.map((url) => mockFetch(url, urls.indexOf(url)));
+    const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
     await Promise.all(promises);
   });
 
@@ -99,7 +99,7 @@ describe("FetchQueue", () => {
   });
 });
 
-describe("FetchQueue with configuration", () => {
+describe("test case with start and pause queue", () => {
   //test
   it("should not execute fetch request with disableQueue true in config", async () => {
     const fetchQueue = new FetchQueue({ concurrent: 2, pauseQueueOnInit: true });
@@ -111,24 +111,61 @@ describe("FetchQueue with configuration", () => {
       switch (urlIndex) {
         case 0:
         case 1:
-          expect(fetchQueue["_activeRequests"]).toBe(0);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
           break;
         case 2:
-          expect(fetchQueue["_activeRequests"]).toBe(0);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
           expect(fetchQueue.getQueueLength()).toBe(3);
           break;
         case 3:
-          expect(fetchQueue["_activeRequests"]).toBe(0);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
           expect(fetchQueue.getQueueLength()).toBe(4);
           break;
       }
       return Promise.resolve(true);
     });
 
-    const promises = urls.map((url) => mockFetch(url, urls.indexOf(url)));
+    const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
     await Promise.all(promises);
 
     fetchQueue.startQueue();
     expect(fetchQueue.getQueueLength()).toBe(3);
+  });
+
+  it("execute a single fetch queue and pause others on completion", async () => {
+    const fetchQueue = new FetchQueue({ concurrent: 2 });
+    const fetch = fetchQueue.getFetchMethod();
+
+    const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+      jest.advanceTimersByTime(5000);
+      switch (urlIndex) {
+        case 0:
+          expect(fetchQueue.getActiveRequests()).toBe(0);
+          expect(fetchQueue.getQueueLength()).toBe(0);
+          break;
+        case 1:
+          expect(fetchQueue.getActiveRequests()).toBe(1);
+          expect(fetchQueue.getQueueLength()).toBe(0);
+          fetchQueue.pauseQueue();
+          expect(fetchQueue.getQueueLength()).toBe(0);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
+          break;
+        case 2:
+          expect(fetchQueue.getQueueLength()).toBe(1);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
+          break;
+        case 3:
+          fetchQueue.startQueue();
+          expect(fetchQueue.getQueueLength()).toBe(1);
+          expect(fetchQueue.getActiveRequests()).toBe(1);
+          break;
+      }
+      return Promise.resolve(fetch(url));
+    });
+
+    const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
+    await Promise.all(promises);
+
+    expect(fetchQueue.getQueueLength()).toBe(0);
   });
 });
