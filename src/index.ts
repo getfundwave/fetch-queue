@@ -150,9 +150,13 @@ export class FetchQueue {
 
   /**
    * Enables the queuing of fetch requests in the FetchQueue.
+   * @param {boolean} [emptyQueue] If true, empties the queue before starting.
    * @returns {void}
    */
-  public startQueue(): void {
+  public startQueue(emptyQueue?: boolean): void {
+    if (emptyQueue) this.#queue = [];
+    if (this.#debug && emptyQueue) this.#urlsQueued = [];
+
     this.#pauseQueue = false;
     this.#emitRequestCompletedEvent();
   }
@@ -180,17 +184,16 @@ export class FetchQueue {
 
       if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
         return task();
-      } else {
-        return new Promise((resolve, reject) => {
-          const queueTask = () => {
-            task().then(resolve).catch(reject);
-          };
-          this.#queue.push(queueTask);
-          if (this.#debug) {
-            this.#urlsQueued.push(url.toString().split("/").slice(-3).join("/"));
-          }
-        });
       }
+      return new Promise((resolve, reject) => {
+        const queueTask = () => {
+          task().then(resolve).catch(reject);
+        };
+        this.#queue.push(queueTask);
+        if (this.#debug) {
+          this.#urlsQueued.push(url.toString().split("/").slice(-3).join("/"));
+        }
+      });
     };
   })();
 }

@@ -168,4 +168,41 @@ describe("test case with start and pause queue", () => {
 
     expect(fetchQueue.getQueueLength()).toBe(0);
   });
+
+  // it("start fetchQueue with emptyQueue set to true", async () => {
+  //   const fetchQueue = new FetchQueue({ concurrent: 1 });
+  //   const fetch = fetchQueue.getFetchMethod();
+
+  //   const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+  //     switch (urlIndex) {
+  //       case 0:
+  //         expect(fetchQueue.getActiveRequests()).toBe(0);
+  //         expect(fetchQueue.getQueueLength()).toBe(0);
+  //         fetchQueue.pauseQueue();
+  //         break;
+  //       case 1:
+  //         expect(fetchQueue.getQueueLength()).toBe(1);
+  //         expect(fetchQueue.getActiveRequests()).toBe(0);
+  //         break;
+  //       case 2:
+  //         expect(fetchQueue.getQueueLength()).toBe(2);
+  //         expect(fetchQueue.getActiveRequests()).toBe(0);
+  //         fetchQueue.startQueue(true);
+  //         break;
+  //       case 3:
+  //         expect(fetchQueue.getQueueLength()).toBe(0);
+  //         expect(fetchQueue.getActiveRequests()).toBe(1);
+  //         break;
+  //     }
+
+  //     await fetch(url);
+  //     jest.advanceTimersByTime(5000);
+  //     return;
+  //   });
+
+  //   const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
+  //   await Promise.all(promises);
+
+  //   expect(fetchQueue.getQueueLength()).toBe(0);
+  // });
 });
