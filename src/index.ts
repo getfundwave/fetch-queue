@@ -1,5 +1,4 @@
-import fetch from "node-fetch";
-import { RequestInfo, RequestInit, Response } from "node-fetch";
+import fetch, { RequestInfo, RequestInit, Response } from "node-fetch";
 import { FetchQueueConfig } from "./interfaces/index.js";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -19,7 +18,7 @@ export class FetchQueue {
   /**
    * An array of strings representing the URLs in the queue.
    */
-  #urlsQueued: Array<string>;
+  #urlsQueued: Array<{ url: string; controller: AbortController }>;
 
   /**
    * An array of strings representing the URLs executing.
@@ -67,18 +66,26 @@ export class FetchQueue {
    * @param options - The options for the fetch request.
    * @returns A Promise that resolves to the fetch response.
    */
-  #run = async (url: URL | RequestInfo, options?: RequestInit): Promise<Response> => {
+  #run = async (url: URL | RequestInfo, options?: RequestInit, controller?: AbortController): Promise<Response> => {
     this.#activeRequests++;
     try {
       if (this.#debug) {
         this.#urlsExecuting.push(url.toString());
         console.log("executing", this.#urlsExecuting);
       }
+
+      if (!!controller && controller.signal.aborted) {
+        console.log({ signal: controller.signal.aborted });
+        return new Response();
+      }
+
       const response: Response = await fetch(url, options);
+
       if (this.#debug) {
         const index = this.#urlsExecuting.indexOf(url.toString());
         this.#urlsExecuting.splice(index, 1);
       }
+
       return response;
     } finally {
       this.#activeRequests--;
@@ -154,8 +161,14 @@ export class FetchQueue {
    * @returns {void}
    */
   public startQueue(emptyQueue?: boolean): void {
-    if (emptyQueue) this.#queue = [];
-    if (this.#debug && emptyQueue) this.#urlsQueued = [];
+    if (emptyQueue) {
+      this.#urlsQueued.forEach((request) => {
+        console.log(request);
+        request.controller.abort();
+        console.log({ abort1: request.controller.signal.aborted });
+      });
+      this.#urlsQueued = [];
+    }
 
     this.#pauseQueue = false;
     this.#emitRequestCompletedEvent();
@@ -180,19 +193,18 @@ export class FetchQueue {
    */
   #f_fetch = (() => {
     return (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
-      const task = () => this.#run(url, options);
+      const controller = new AbortController();
+      const executeFetchRequest = (controller: AbortController) => this.#run(url, options, controller);
 
       if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
-        return task();
+        return executeFetchRequest(controller);
       }
       return new Promise((resolve, reject) => {
         const queueTask = () => {
-          task().then(resolve).catch(reject);
+          executeFetchRequest(controller).then(resolve).catch(reject);
         };
         this.#queue.push(queueTask);
-        if (this.#debug) {
-          this.#urlsQueued.push(url.toString().split("/").slice(-3).join("/"));
-        }
+        this.#urlsQueued.push({ url: url.toString().split("/").slice(-3).join("/"), controller });
       });
     };
   })();

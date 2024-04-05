@@ -2,6 +2,14 @@ import { FetchQueue } from "../src/index";
 
 const urls = ["https://example.com/", "https://github.com/", "https://example.com/3", "https://google.com/"];
 
+async function wait(time: number = 1200) {
+  return new Promise((resolve) => {
+    setTimeout(function () {
+      return resolve(true);
+    }, time);
+  });
+}
+
 describe("FetchQueue", () => {
   // test
   it("should not initialize FetchQueue with negative concurrent value", () => {
@@ -169,40 +177,40 @@ describe("test case with start and pause queue", () => {
     expect(fetchQueue.getQueueLength()).toBe(0);
   });
 
-  // it("start fetchQueue with emptyQueue set to true", async () => {
-  //   const fetchQueue = new FetchQueue({ concurrent: 1 });
-  //   const fetch = fetchQueue.getFetchMethod();
+  it("start fetchQueue with emptyQueue set to true", async () => {
+    const fetchQueue = new FetchQueue({ concurrent: 1, debug: true });
+    const fetch = fetchQueue.getFetchMethod();
 
-  //   const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
-  //     switch (urlIndex) {
-  //       case 0:
-  //         expect(fetchQueue.getActiveRequests()).toBe(0);
-  //         expect(fetchQueue.getQueueLength()).toBe(0);
-  //         fetchQueue.pauseQueue();
-  //         break;
-  //       case 1:
-  //         expect(fetchQueue.getQueueLength()).toBe(1);
-  //         expect(fetchQueue.getActiveRequests()).toBe(0);
-  //         break;
-  //       case 2:
-  //         expect(fetchQueue.getQueueLength()).toBe(2);
-  //         expect(fetchQueue.getActiveRequests()).toBe(0);
-  //         fetchQueue.startQueue(true);
-  //         break;
-  //       case 3:
-  //         expect(fetchQueue.getQueueLength()).toBe(0);
-  //         expect(fetchQueue.getActiveRequests()).toBe(1);
-  //         break;
-  //     }
+    const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+      // await wait(500);
+      console.log(Date.now());
+      switch (urlIndex) {
+        case 0:
+          fetchQueue.pauseQueue();
+          expect(fetchQueue.getQueueLength()).toBe(0);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
+          break;
+        case 1:
+          expect(fetchQueue.getQueueLength()).toBe(1);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
+          break;
+        case 2:
+          expect(fetchQueue.getQueueLength()).toBe(2);
+          expect(fetchQueue.getActiveRequests()).toBe(0);
+          fetchQueue.startQueue(true);
+          break;
+        case 3:
+          expect(fetchQueue.getQueueLength()).toBe(0);
+          expect(fetchQueue.getActiveRequests()).toBe(1);
+          break;
+      }
 
-  //     await fetch(url);
-  //     jest.advanceTimersByTime(5000);
-  //     return;
-  //   });
+      return await fetch(url);
+    });
 
-  //   const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
-  //   await Promise.all(promises);
+    const promises = urls.map(async (url, urlIndex) => await mockFetch(url, urlIndex));
+    await Promise.all(promises);
 
-  //   expect(fetchQueue.getQueueLength()).toBe(0);
-  // });
+    expect(fetchQueue.getQueueLength()).toBe(0);
+  });
 });
