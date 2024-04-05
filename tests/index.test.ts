@@ -180,11 +180,13 @@ describe("test case with start and pause queue", () => {
   });
 
   //test
-  it("start fetchQueue with emptyQueue set to true", async () => {
+  it("use emptyQueue", async () => {
+    jest.useRealTimers();
     const fetchQueue = new FetchQueue({ concurrent: 1 });
     const fetch = fetchQueue.getFetchMethod();
 
     const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+      await wait();
       switch (urlIndex) {
         case 0:
           fetchQueue.pauseQueue();
@@ -208,12 +210,7 @@ describe("test case with start and pause queue", () => {
           break;
       }
 
-      try {
-        await fetch(url).then((data) => data.json());
-      } catch (error) {
-      } finally {
-        return;
-      }
+      await fetch(url).catch(() => {});
     });
 
     const promises = urls.map(async (url, urlIndex) => await mockFetch(url, urlIndex));
