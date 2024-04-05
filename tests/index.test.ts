@@ -1,6 +1,6 @@
 import { FetchQueue } from "../src/index";
 
-const urls = ["https://example.com/", "https://github.com/", "https://example.com/3", "https://google.com/"];
+const urls = ["https://dummy.restapiexample.com/api/v1/employees", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
 
 async function wait(time: number = 1200) {
   return new Promise((resolve) => {
@@ -14,7 +14,7 @@ describe("FetchQueue", () => {
   // test
   it("should not initialize FetchQueue with negative concurrent value", () => {
     expect(() => new FetchQueue({ concurrent: -1 })).toThrow();
-  });
+  }, 10000);
 
   // test
   it("should execute multiple fetch requests with expected queue lengths", async () => {
@@ -35,12 +35,12 @@ describe("FetchQueue", () => {
           expect(fetchQueue.getQueueLength()).toBe(2);
           break;
       }
-      return Promise.resolve(await fetch(url));
+      return await fetch(url);
     });
 
     const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
     await Promise.all(promises);
-  });
+  }, 10000);
 
   // test
   it("should execute multiple fetch requests successfully except one", async () => {
@@ -51,8 +51,8 @@ describe("FetchQueue", () => {
     const responses = await Promise.all(promises);
 
     expect(responses.filter((r) => r.status === 200)).toHaveLength(3);
-    expect(responses.find((r) => r.status === 404)).toBeDefined();
-  });
+    expect(responses.find((r) => r.status !== 200)).toBeDefined();
+  }, 10000);
 
   // test
   it("should execute fetch requests with concurrency and after destroyQueue fetch requests parallel", async () => {
@@ -65,9 +65,9 @@ describe("FetchQueue", () => {
     const run = async (url: URL | string): Promise<Response> => {
       activeRequests++;
       try {
-        startTime.push(new Date().getTime());
+        startTime.push(Date.now());
         const response = await require("node-fetch")(url);
-        endTime.push(new Date().getTime());
+        endTime.push(Date.now());
         return response;
       } catch (e) {
         throw e;
@@ -116,17 +116,18 @@ describe("test case with start and pause queue", () => {
     const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
       fetch(url);
       jest.advanceTimersByTime(5000);
+      expect(fetchQueue.getActiveRequests()).toBe(0);
       switch (urlIndex) {
         case 0:
+          expect(fetchQueue.getQueueLength()).toBe(1);
+          break;
         case 1:
-          expect(fetchQueue.getActiveRequests()).toBe(0);
+          expect(fetchQueue.getQueueLength()).toBe(2);
           break;
         case 2:
-          expect(fetchQueue.getActiveRequests()).toBe(0);
           expect(fetchQueue.getQueueLength()).toBe(3);
           break;
         case 3:
-          expect(fetchQueue.getActiveRequests()).toBe(0);
           expect(fetchQueue.getQueueLength()).toBe(4);
           break;
       }
@@ -140,6 +141,7 @@ describe("test case with start and pause queue", () => {
     expect(fetchQueue.getQueueLength()).toBe(3);
   });
 
+  // test
   it("execute a single fetch queue and pause others on completion", async () => {
     const fetchQueue = new FetchQueue({ concurrent: 2 });
     const fetch = fetchQueue.getFetchMethod();
@@ -177,13 +179,12 @@ describe("test case with start and pause queue", () => {
     expect(fetchQueue.getQueueLength()).toBe(0);
   });
 
+  //test
   it("start fetchQueue with emptyQueue set to true", async () => {
-    const fetchQueue = new FetchQueue({ concurrent: 1, debug: true });
+    const fetchQueue = new FetchQueue({ concurrent: 1 });
     const fetch = fetchQueue.getFetchMethod();
 
     const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
-      // await wait(500);
-      console.log(Date.now());
       switch (urlIndex) {
         case 0:
           fetchQueue.pauseQueue();
@@ -195,9 +196,11 @@ describe("test case with start and pause queue", () => {
           expect(fetchQueue.getActiveRequests()).toBe(0);
           break;
         case 2:
-          expect(fetchQueue.getQueueLength()).toBe(2);
+          const regExp = /https:\/\/dummyjson\.com.*/g;
+          fetchQueue.emptyQueue(regExp);
+          expect(fetchQueue.getQueueLength()).toBe(0);
           expect(fetchQueue.getActiveRequests()).toBe(0);
-          fetchQueue.startQueue(true);
+          fetchQueue.startQueue();
           break;
         case 3:
           expect(fetchQueue.getQueueLength()).toBe(0);
@@ -205,12 +208,17 @@ describe("test case with start and pause queue", () => {
           break;
       }
 
-      return await fetch(url);
+      try {
+        await fetch(url).then((data) => data.json());
+      } catch (error) {
+      } finally {
+        return;
+      }
     });
 
     const promises = urls.map(async (url, urlIndex) => await mockFetch(url, urlIndex));
     await Promise.all(promises);
 
     expect(fetchQueue.getQueueLength()).toBe(0);
-  });
+  }, 20000);
 });

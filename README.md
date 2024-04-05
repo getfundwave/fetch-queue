@@ -63,8 +63,11 @@ const fetchQueue = new FetchQueue(concurrent: 3, pauseQueueOnInit: true);
 const customFetch = fetchQueue.getFetchMethod();
 
 // ...some calls
+fetchQueue.emptyQueue();
 fetchQueue.startQueue();
 
 // ...some calls
-fetcheQueue.pauseQueue();
+fetchQueue.pauseQueue();
 ```
+
+Note: See DOCUMENTATION.md for more information on methods.

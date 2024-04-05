@@ -23,7 +23,7 @@ export class FetchQueue {
   /**
    * An array of strings representing the URLs executing.
    */
-  #urlsExecuting: Array<string>;
+  #urlsExecuting: Set<string>;
 
   /**
    * The current number of active fetch requests.
@@ -50,7 +50,7 @@ export class FetchQueue {
     this.#activeRequests = 0;
     this.#queue = [];
     this.#urlsQueued = [];
-    this.#urlsExecuting = [];
+    this.#urlsExecuting = new Set<string>();
     this.#pauseQueue = options?.pauseQueueOnInit || false;
 
     if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
@@ -67,24 +67,21 @@ export class FetchQueue {
    * @returns A Promise that resolves to the fetch response.
    */
   #run = async (url: URL | RequestInfo, options?: RequestInit, controller?: AbortController): Promise<Response> => {
-    this.#activeRequests++;
     try {
       if (this.#debug) {
-        this.#urlsExecuting.push(url.toString());
+        this.#urlsExecuting.add(url.toString());
         console.log("executing", this.#urlsExecuting);
       }
 
       if (!!controller && controller.signal.aborted) {
-        console.log({ signal: controller.signal.aborted });
-        return new Response();
+        if (this.#debug) this.#urlsExecuting.delete(url.toString());
+        throw new Error("Aborted");
       }
 
+      this.#activeRequests++;
       const response: Response = await fetch(url, options);
 
-      if (this.#debug) {
-        const index = this.#urlsExecuting.indexOf(url.toString());
-        this.#urlsExecuting.splice(index, 1);
-      }
+      if (this.#debug) this.#urlsExecuting.delete(url.toString());
 
       return response;
     } finally {
@@ -97,13 +94,11 @@ export class FetchQueue {
    * Executes the next task in the queue when a fetch request is completed.
    */
   #emitRequestCompletedEvent = (): void => {
-    if (this.#debug) {
-      if (this.#urlsQueued.length > 0) {
-        console.log("queue", this.#urlsQueued);
-        this.#urlsQueued.shift();
-      }
-    }
+    if (this.#debug) console.log("queue", this.#urlsQueued);
+
     if (this.#queue.length <= 0 || this.#pauseQueue) return;
+
+    this.#urlsQueued.shift();
     const nextTask = this.#queue.shift();
     nextTask!();
   };
@@ -147,6 +142,25 @@ export class FetchQueue {
   }
 
   /**
+   * Empties the queue of fetch requests.
+   *
+   * @param urlPattern - Optional regular expression to match against the URLs in the queue.
+   * If provided, only the requests with URLs that match the pattern will be aborted.
+   * If not provided, all requests in the queue will be aborted.
+   */
+  public emptyQueue(urlPattern?: RegExp) {
+    this.#urlsQueued.forEach((request) => {
+      if (!urlPattern) request.controller.abort();
+      else if (!!urlPattern && request.url.match(urlPattern)) request.controller.abort();
+    });
+
+    this.#queue.forEach((task) => task());
+
+    this.#urlsQueued = [];
+    this.#queue = [];
+  }
+
+  /**
    * Disables the queuing of fetch requests in the FetchQueue.
    * @returns {void}
    */
@@ -157,19 +171,9 @@ export class FetchQueue {
 
   /**
    * Enables the queuing of fetch requests in the FetchQueue.
-   * @param {boolean} [emptyQueue] If true, empties the queue before starting.
    * @returns {void}
    */
-  public startQueue(emptyQueue?: boolean): void {
-    if (emptyQueue) {
-      this.#urlsQueued.forEach((request) => {
-        console.log(request);
-        request.controller.abort();
-        console.log({ abort1: request.controller.signal.aborted });
-      });
-      this.#urlsQueued = [];
-    }
-
+  public startQueue(): void {
     this.#pauseQueue = false;
     this.#emitRequestCompletedEvent();
   }
@@ -204,7 +208,7 @@ export class FetchQueue {
           executeFetchRequest(controller).then(resolve).catch(reject);
         };
         this.#queue.push(queueTask);
-        this.#urlsQueued.push({ url: url.toString().split("/").slice(-3).join("/"), controller });
+        this.#urlsQueued.push({ url: url.toString(), controller });
       });
     };
   })();
