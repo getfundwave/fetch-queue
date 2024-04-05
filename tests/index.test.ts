@@ -1,6 +1,6 @@
 import { FetchQueue } from "../src/index";
 
-const urls = ["https://dummy.restapiexample.com/api/v1/employees", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
+const urls = ["https://dummy.restapiexample.com/api/v1/fail", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
 
 async function wait(time: number = 1200) {
   return new Promise((resolve) => {
@@ -10,11 +10,13 @@ async function wait(time: number = 1200) {
   });
 }
 
+const TEST_TIMEOUT = 10000;
+
 describe("FetchQueue", () => {
   // test
   it("should not initialize FetchQueue with negative concurrent value", () => {
     expect(() => new FetchQueue({ concurrent: -1 })).toThrow();
-  }, 10000);
+  }, TEST_TIMEOUT);
 
   // test
   it("should execute multiple fetch requests with expected queue lengths", async () => {
@@ -40,7 +42,7 @@ describe("FetchQueue", () => {
 
     const promises = urls.map((url, urlIndex) => mockFetch(url, urlIndex));
     await Promise.all(promises);
-  }, 10000);
+  }, TEST_TIMEOUT);
 
   // test
   it("should execute multiple fetch requests successfully except one", async () => {
@@ -52,7 +54,7 @@ describe("FetchQueue", () => {
 
     expect(responses.filter((r) => r.status === 200)).toHaveLength(3);
     expect(responses.find((r) => r.status !== 200)).toBeDefined();
-  }, 10000);
+  }, TEST_TIMEOUT);
 
   // test
   it("should execute fetch requests with concurrency and after destroyQueue fetch requests parallel", async () => {
@@ -177,7 +179,7 @@ describe("test case with start and pause queue", () => {
     await Promise.all(promises);
 
     expect(fetchQueue.getQueueLength()).toBe(0);
-  });
+  }, TEST_TIMEOUT);
 
   //test
   it("use emptyQueue", async () => {
@@ -217,5 +219,5 @@ describe("test case with start and pause queue", () => {
     await Promise.all(promises);
 
     expect(fetchQueue.getQueueLength()).toBe(0);
-  }, 20000);
+  }, TEST_TIMEOUT);
 });
