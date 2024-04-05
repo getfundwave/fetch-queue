@@ -13,8 +13,9 @@ It ensures that the number of active requests does not exceed a specified limit,
     * [.setConcurrent(concurrent)](#FetchQueue+setConcurrent)
     * [.getDebug()](#FetchQueue+getDebug) ⇒
     * [.setDebug(debug)](#FetchQueue+setDebug)
+    * [.emptyQueue(urlPattern)](#FetchQueue+emptyQueue)
     * [.pauseQueue()](#FetchQueue+pauseQueue) ⇒ <code>void</code>
-    * [.startQueue([emptyQueue])](#FetchQueue+startQueue) ⇒ <code>void</code>
+    * [.startQueue()](#FetchQueue+startQueue) ⇒ <code>void</code>
     * [.getQueueLength()](#FetchQueue+getQueueLength) ⇒
     * [.getActiveRequests()](#FetchQueue+getActiveRequests) ⇒
 
@@ -68,6 +69,17 @@ If no options are provided, the default concurrent value is set to 3.</p>
 | --- | --- |
 | debug | <code>boolean</code> | 
 
+<a name="FetchQueue+emptyQueue"></a>
+
+### fetchQueue.emptyQueue(urlPattern)
+<p>Empties the queue of fetch requests.</p>
+
+**Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
+
+| Param | Description |
+| --- | --- |
+| urlPattern | <p>Optional regular expression to match against the URLs in the queue. If provided, only the requests with URLs that match the pattern will be aborted. If not provided, all requests in the queue will be aborted.</p> |
+
 <a name="FetchQueue+pauseQueue"></a>
 
 ### fetchQueue.pauseQueue() ⇒ <code>void</code>
@@ -76,15 +88,10 @@ If no options are provided, the default concurrent value is set to 3.</p>
 **Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
 <a name="FetchQueue+startQueue"></a>
 
-### fetchQueue.startQueue([emptyQueue]) ⇒ <code>void</code>
+### fetchQueue.startQueue() ⇒ <code>void</code>
 <p>Enables the queuing of fetch requests in the FetchQueue.</p>
 
 **Kind**: instance method of [<code>FetchQueue</code>](#FetchQueue)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| [emptyQueue] | <code>boolean</code> | <p>If true, empties the queue before starting.</p> |
-
 <a name="FetchQueue+getQueueLength"></a>
 
 ### fetchQueue.getQueueLength() ⇒
