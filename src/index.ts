@@ -1,5 +1,4 @@
-import fetch from "node-fetch";
-import { RequestInfo, RequestInit, Response } from "node-fetch";
+import fetch, { RequestInfo, RequestInit, Response } from "node-fetch";
 import { FetchQueueConfig } from "./interfaces/index.js";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -9,31 +8,36 @@ export class FetchQueue {
   /**
    * The maximum number of concurrent fetch requests allowed.
    */
-  private _concurrent: number;
+  #concurrent: number;
 
   /**
    * Indicates whether debugging is enabled or not.
    */
-  private _debug: boolean;
+  #debug: boolean;
 
   /**
    * An array of strings representing the URLs in the queue.
    */
-  private _urlsQueued: Array<string>;
+  #urlsQueued: Array<{ url: string; controller: AbortController }>;
 
   /**
    * An array of strings representing the URLs executing.
    */
-  private _urlsExecuting: Array<string>;
+  #urlsExecuting: Set<string>;
 
   /**
    * The current number of active fetch requests.
    */
-  private _activeRequests: number;
+  #activeRequests: number;
   /**
    * A queue of tasks to be executed when a slot becomes available for a new fetch request.
    */
-  private _queue: Array<() => void>;
+  #queue: Array<() => void>;
+
+  /**
+   * If true, Disables task executions but {@link #queue} gets populated.
+   */
+  #pauseQueue: boolean;
 
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
@@ -41,14 +45,15 @@ export class FetchQueue {
    * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
    */
   constructor(options?: FetchQueueConfig) {
-    this._concurrent = options?.concurrent || 3;
-    this._debug = options?.debug || false;
-    this._activeRequests = 0;
-    this._queue = [];
-    this._urlsQueued = [];
-    this._urlsExecuting = [];
+    this.#concurrent = options?.concurrent || 3;
+    this.#debug = options?.debug || false;
+    this.#activeRequests = 0;
+    this.#queue = [];
+    this.#urlsQueued = [];
+    this.#urlsExecuting = new Set<string>();
+    this.#pauseQueue = options?.pauseQueueOnInit || false;
 
-    if (typeof this._concurrent !== "number" || this._concurrent <= 0) {
+    if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
     }
   }
@@ -61,40 +66,40 @@ export class FetchQueue {
    * @param options - The options for the fetch request.
    * @returns A Promise that resolves to the fetch response.
    */
-  private _run = async (
-    url: URL | RequestInfo,
-    options?: RequestInit
-  ): Promise<Response> => {
-    this._activeRequests++;
+  #run = async (url: URL | RequestInfo, options?: RequestInit, controller?: AbortController): Promise<Response> => {
     try {
-      if (this._debug) {
-        this._urlsExecuting.push(url.toString());
-        console.log("executing", this._urlsExecuting);
+      if (this.#debug) {
+        this.#urlsExecuting.add(url.toString());
+        console.log("executing", this.#urlsExecuting);
       }
+
+      if (!!controller && controller.signal.aborted) {
+        if (this.#debug) this.#urlsExecuting.delete(url.toString());
+        throw new Error("Aborted");
+      }
+
+      this.#activeRequests++;
       const response: Response = await fetch(url, options);
-      if (this._debug) {
-        const index = this._urlsExecuting.indexOf(url.toString());
-        this._urlsExecuting.splice(index, 1);
-      }
+
+      if (this.#debug) this.#urlsExecuting.delete(url.toString());
+
       return response;
     } finally {
-      this._activeRequests--;
-      this._emitRequestCompletedEvent();
+      this.#activeRequests--;
+      this.#emitRequestCompletedEvent();
     }
   };
 
   /**
    * Executes the next task in the queue when a fetch request is completed.
    */
-  private _emitRequestCompletedEvent = (): void => {
-    if (this._debug) {
-      if (this._urlsQueued.length > 0) {
-        console.log("queue", this._urlsQueued);
-        this._urlsQueued.shift();
-      }
-    }
-    if (this._queue.length <= 0) return;
-    const nextTask = this._queue.shift();
+  #emitRequestCompletedEvent = (): void => {
+    if (this.#debug) console.log("queue", this.#urlsQueued);
+
+    if (this.#queue.length <= 0 || this.#pauseQueue) return;
+
+    this.#urlsQueued.shift();
+    const nextTask = this.#queue.shift();
     nextTask!();
   };
 
@@ -103,14 +108,14 @@ export class FetchQueue {
    * @returns The custom fetch function.
    */
   public getFetchMethod() {
-    return this._f_fetch;
+    return this.#f_fetch;
   }
 
   /**
    * @returns value of concurrent property
    */
   public getConcurrent() {
-    return this._concurrent;
+    return this.#concurrent;
   }
 
   /**
@@ -118,14 +123,14 @@ export class FetchQueue {
    * @param {number} concurrent
    */
   public setConcurrent(concurrent: number) {
-    this._concurrent = concurrent;
+    this.#concurrent = concurrent;
   }
 
   /**
    * @returns value of debug property
    */
   public getDebug() {
-    return this._debug;
+    return this.#debug;
   }
 
   /**
@@ -133,41 +138,78 @@ export class FetchQueue {
    * @param {boolean} debug
    */
   public setDebug(debug: boolean) {
-    this._debug = debug;
+    this.#debug = debug;
+  }
+
+  /**
+   * Empties the queue of fetch requests.
+   *
+   * @param urlPattern - Optional regular expression to match against the URLs in the queue.
+   * If provided, only the requests with URLs that match the pattern will be aborted.
+   * If not provided, all requests in the queue will be aborted.
+   */
+  public emptyQueue(urlPattern?: RegExp) {
+    this.#urlsQueued.forEach((request) => {
+      if (!urlPattern) request.controller.abort();
+      else if (!!urlPattern && request.url.match(urlPattern)) request.controller.abort();
+    });
+
+    this.#queue.forEach((task) => task());
+
+    this.#urlsQueued = [];
+    this.#queue = [];
+  }
+
+  /**
+   * Disables the queuing of fetch requests in the FetchQueue.
+   * @returns {void}
+   */
+  public pauseQueue(): void {
+    this.#pauseQueue = true;
+    this.#activeRequests = 0;
+  }
+
+  /**
+   * Enables the queuing of fetch requests in the FetchQueue.
+   * @returns {void}
+   */
+  public startQueue(): void {
+    this.#pauseQueue = false;
+    this.#emitRequestCompletedEvent();
   }
 
   /**
    * @returns Length of queue
    */
-  public getQueueLength() {
-    return this._queue.length;
+  public getQueueLength(): number {
+    return this.#queue.length;
+  }
+
+  /**
+   * @returns Number of active requests
+   */
+  public getActiveRequests(): number {
+    return this.#activeRequests;
   }
 
   /**
    * The internal fetch implementation that handles queuing of fetch requests.
    */
-  private _f_fetch = (() => {
-    return (
-      url: RequestInfo | URL,
-      options?: RequestInit
-    ): Promise<Response> => {
-      const task = () => this._run(url, options);
+  #f_fetch = (() => {
+    return (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+      const controller = new AbortController();
+      const executeFetchRequest = (controller: AbortController) => this.#run(url, options, controller);
 
-      if (this._activeRequests < this._concurrent) {
-        return task();
-      } else {
-        return new Promise((resolve, reject) => {
-          const queueTask = () => {
-            task().then(resolve).catch(reject);
-          };
-          this._queue.push(queueTask);
-          if (this._debug) {
-            this._urlsQueued.push(
-              url.toString().split("/").slice(-3).join("/")
-            );
-          }
-        });
+      if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
+        return executeFetchRequest(controller);
       }
+      return new Promise((resolve, reject) => {
+        const queueTask = () => {
+          executeFetchRequest(controller).then(resolve).catch(reject);
+        };
+        this.#queue.push(queueTask);
+        this.#urlsQueued.push({ url: url.toString(), controller });
+      });
     };
   })();
 }

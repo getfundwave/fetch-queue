@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/fetchq",
-  "version": "1.1.1",
+  "version": "1.1.2-disable-queue.4",
   "description": "Queue for fetch requests",
   "main": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
@@ -13,7 +13,8 @@
     "build:esm": "tsc --module NodeNext --outDir ./dist/esm",
     "build": "tsc --module commonjs --outDir ./dist/cjs",
     "prepare": "npm run build && npm run build:esm",
-    "test": "jest",
+    "pretest": "jest --clearCache",
+    "test": "jest --detectOpenHandles",
     "lint": "npx eslint src/index.ts",
     "docs": "npx jsdoc-to-markdown ./src/index.ts --configure ./jsdoc2md.json > DOCUMENTATION.md"
   },
