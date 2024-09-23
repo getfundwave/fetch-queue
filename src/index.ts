@@ -1,4 +1,4 @@
-import fetch, { RequestInfo, RequestInit, Response } from "node-fetch";
+import fetch from "node-fetch";
 import { FetchQueueConfig } from "./interfaces/index.js";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
@@ -39,19 +39,22 @@ export class FetchQueue {
    */
   #pauseQueue: boolean;
 
+  #fetch: Function;
+
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
    * If no options are provided, the default concurrent value is set to 3.
    * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
    */
-  constructor(options?: FetchQueueConfig) {
-    this.#concurrent = options?.concurrent || 3;
-    this.#debug = options?.debug || false;
+  constructor(options: FetchQueueConfig) {
+    this.#concurrent = options.concurrent || 3;
+    this.#debug = options.debug || false;
     this.#activeRequests = 0;
     this.#queue = [];
     this.#urlsQueued = [];
     this.#urlsExecuting = new Set<string>();
-    this.#pauseQueue = options?.pauseQueueOnInit || false;
+    this.#pauseQueue = options.pauseQueueOnInit || false;
+    this.#fetch = options?.fetch || fetch;
 
     if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
@@ -66,7 +69,7 @@ export class FetchQueue {
    * @param options - The options for the fetch request.
    * @returns A Promise that resolves to the fetch response.
    */
-  #run = async (url: URL | RequestInfo, options?: RequestInit, controller?: AbortController): Promise<Response> => {
+  #run = async (url: string, options?: Record<string, any>, controller?: AbortController): Promise<any> => {
     try {
       if (this.#debug) {
         this.#urlsExecuting.add(url.toString());
@@ -79,7 +82,7 @@ export class FetchQueue {
       }
 
       this.#activeRequests++;
-      const response: Response = await fetch(url, options);
+      const response = await this.#fetch(url, options);
 
       if (this.#debug) this.#urlsExecuting.delete(url.toString());
 
@@ -196,7 +199,7 @@ export class FetchQueue {
    * The internal fetch implementation that handles queuing of fetch requests.
    */
   #f_fetch = (() => {
-    return (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+    return (url: string, options?: Record<string, any>): Promise<any> => {
       const controller = new AbortController();
       const executeFetchRequest = (controller: AbortController) => this.#run(url, options, controller);
 

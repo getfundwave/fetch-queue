@@ -1,5 +1,6 @@
 export type FetchQueueConfig = {
-  concurrent: number;
-  pauseQueueOnInit?: boolean
+  fetch?: Function;
+  concurrent?: number;
+  pauseQueueOnInit?: boolean;
   debug?: boolean;
 };
