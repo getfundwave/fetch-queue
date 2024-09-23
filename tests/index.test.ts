@@ -1,6 +1,6 @@
 import { FetchQueue } from "../src/index";
 
-const urls = ["https://dummy.restapiexample.com/api/v1/fail", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
+const urls = ["http://httpstat.us/500", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
 
 async function wait(time: number = 1200) {
   return new Promise((resolve) => {
