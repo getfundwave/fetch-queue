@@ -13,7 +13,7 @@ export class FetchQueue {
   /**
    * Indicates whether debugging is enabled or not.
    */
-  #debug: Boolean;
+  #debug: boolean;
 
   /**
    * An array of strings representing the URLs in the queue.
@@ -23,7 +23,7 @@ export class FetchQueue {
   /**
    * An array of strings representing the URLs executing.
    */
-  #urlsExecuting: Set<String>;
+  #urlsExecuting: Set<string>;
 
   /**
    * The current number of active fetch requests.
@@ -37,7 +37,7 @@ export class FetchQueue {
   /**
    * If true, Disables task executions but {@link #queue} gets populated.
    */
-  #pauseQueue: Boolean;
+  #pauseQueue: boolean;
 
   /**
    * If true, Disables task executions but {@link #queue} gets populated.
@@ -110,7 +110,7 @@ export class FetchQueue {
       if (this.#debug) console.log("Processing pre-fetch hooks for: ", url.toString());
       return preFetchHookConfig.hook(url, options);
     }));
-  };
+  }
 
   /**
    * Executes the next task in the queue when a fetch request is completed.

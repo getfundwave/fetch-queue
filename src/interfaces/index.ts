@@ -5,7 +5,7 @@ export type PreFetchHookConfig = { pattern: RegExp, hook: PreFetchHook };
 
 export type FetchQueueConfig = {
   concurrent: number;
-  pauseQueueOnInit?: Boolean;
+  pauseQueueOnInit?: boolean;
   preFetchHooks?: PreFetchHookConfig[];
-  debug?: Boolean;
+  debug?: boolean;
 };
