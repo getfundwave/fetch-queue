@@ -1,4 +1,5 @@
 import { FetchQueue } from "../src/index";
+import { PreFetchHook } from "../src/interfaces";
 
 const urls = ["https://dummy.restapiexample.com/api/v1/fail", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
 
@@ -219,5 +220,27 @@ describe("test case with start and pause queue", () => {
     await Promise.all(promises);
 
     expect(fetchQueue.getQueueLength()).toBe(0);
+  }, TEST_TIMEOUT);
+  
+  // test
+  it("execute pre-fetch-hooks", async () => {
+    jest.useRealTimers();
+
+    const hook = jest.fn() as PreFetchHook;
+    
+    const fetchQueue = new FetchQueue({ 
+      concurrent: 1,
+      preFetchHooks: [{ pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook }]
+    });
+
+    fetchQueue.startQueue();
+
+    const fetch = fetchQueue.getFetchMethod();
+    await Promise.allSettled([
+      fetch("https://dummyjson.com/products/1"),
+      fetch("https://dummyjson.com/test"),
+    ]);
+
+    expect(hook).toHaveBeenCalledTimes(1);
   }, TEST_TIMEOUT);
 });
