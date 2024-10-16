@@ -1,5 +1,5 @@
 import fetch, { RequestInfo, RequestInit, Response } from "node-fetch";
-import { FetchQueueConfig } from "./interfaces/index.js";
+import { FetchQueueConfig, PreFetchHookConfig } from "./interfaces/index.js";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
  * It ensures that the number of active requests does not exceed a specified limit, and queues any additional requests until a slot becomes available.
@@ -13,7 +13,7 @@ export class FetchQueue {
   /**
    * Indicates whether debugging is enabled or not.
    */
-  #debug: boolean;
+  #debug: Boolean;
 
   /**
    * An array of strings representing the URLs in the queue.
@@ -23,7 +23,7 @@ export class FetchQueue {
   /**
    * An array of strings representing the URLs executing.
    */
-  #urlsExecuting: Set<string>;
+  #urlsExecuting: Set<String>;
 
   /**
    * The current number of active fetch requests.
@@ -37,7 +37,12 @@ export class FetchQueue {
   /**
    * If true, Disables task executions but {@link #queue} gets populated.
    */
-  #pauseQueue: boolean;
+  #pauseQueue: Boolean;
+
+  /**
+   * If true, Disables task executions but {@link #queue} gets populated.
+   */
+  #preFetchHooks: PreFetchHookConfig[];
 
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
@@ -52,6 +57,8 @@ export class FetchQueue {
     this.#urlsQueued = [];
     this.#urlsExecuting = new Set<string>();
     this.#pauseQueue = options?.pauseQueueOnInit || false;
+    const preFetchHooks = Array.isArray(options?.preFetchHooks) ? options?.preFetchHooks : [];
+    this.#preFetchHooks = preFetchHooks!;
 
     if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
@@ -78,6 +85,8 @@ export class FetchQueue {
         throw new Error("Aborted");
       }
 
+      if (this.#preFetchHooks.length) await this.#executePreFetchHook(url, options);
+
       this.#activeRequests++;
       const response: Response = await fetch(url, options);
 
@@ -88,6 +97,19 @@ export class FetchQueue {
       this.#activeRequests--;
       this.#emitRequestCompletedEvent();
     }
+  };
+
+  /**
+   * Executes the next task in the queue when a fetch request is completed.
+   */
+  async #executePreFetchHook(url: URL | RequestInfo, options?: RequestInit) {
+    if (this.#preFetchHooks.length < 0) return;
+
+    return Promise.all(this.#preFetchHooks.map(async (preFetchHookConfig) => {
+      if (!preFetchHookConfig.pattern.test(url.toString())) return;
+      if (this.#debug) console.log("Processing pre-fetch hooks for: ", url.toString());
+      return preFetchHookConfig.hook(url, options);
+    }));
   };
 
   /**
@@ -203,6 +225,7 @@ export class FetchQueue {
       if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
         return executeFetchRequest(controller);
       }
+
       return new Promise((resolve, reject) => {
         const queueTask = () => {
           executeFetchRequest(controller).then(resolve).catch(reject);
