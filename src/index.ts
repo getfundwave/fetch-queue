@@ -100,9 +100,9 @@ export class FetchQueue {
   };
 
   /**
-   * Executes the next task in the queue when a fetch request is completed.
+   * Executes relevant pre-fetch hooks based on url-patterns.
    */
-  async #executePreFetchHook(url: URL | RequestInfo, options?: RequestInit) {
+  #executePreFetchHook = async (url: URL | RequestInfo, options?: RequestInit) => {
     if (this.#preFetchHooks.length < 0) return;
 
     return Promise.all(this.#preFetchHooks.map(async (preFetchHookConfig) => {
