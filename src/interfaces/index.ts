@@ -7,5 +7,6 @@ export type FetchQueueConfig = {
   concurrent: number;
   pauseQueueOnInit?: boolean;
   preFetchHooks?: PreFetchHookConfig[];
+  queuingPatterns?: RegExp[];
   debug?: boolean;
 };

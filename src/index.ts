@@ -40,9 +40,14 @@ export class FetchQueue {
   #pauseQueue: boolean;
 
   /**
-   * If true, Disables task executions but {@link #queue} gets populated.
+   * Array of configs for pre-fetch-hooks
    */
   #preFetchHooks: PreFetchHookConfig[];
+  
+  /**
+   * Array of regular-expressions evaluate
+   */
+  #queuingPatterns: RegExp[];
 
   /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
@@ -59,6 +64,8 @@ export class FetchQueue {
     this.#pauseQueue = options?.pauseQueueOnInit || false;
     const preFetchHooks = Array.isArray(options?.preFetchHooks) ? options?.preFetchHooks : [];
     this.#preFetchHooks = preFetchHooks!;
+    const queuingPatterns = Array.isArray(options?.queuingPatterns) ? options?.queuingPatterns : [];
+    this.#queuingPatterns = queuingPatterns!;
 
     if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
@@ -218,11 +225,14 @@ export class FetchQueue {
    * The internal fetch implementation that handles queuing of fetch requests.
    */
   #f_fetch = (() => {
-    return (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+    return (url: RequestInfo | URL, options?: RequestInit) => {
       const controller = new AbortController();
       const executeFetchRequest = (controller: AbortController) => this.#run(url, options, controller);
 
-      if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
+      const patternsExistForEvaluation = Boolean(this.#queuingPatterns.length);
+      const bypassQueue = patternsExistForEvaluation && !this.#queuingPatterns.some(pattern => pattern.test(url.toString()));
+
+      if ((this.#activeRequests < this.#concurrent && !this.#pauseQueue) || bypassQueue) {
         return executeFetchRequest(controller);
       }
 
