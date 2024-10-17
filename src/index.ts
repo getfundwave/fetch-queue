@@ -113,7 +113,8 @@ export class FetchQueue {
     if (this.#preFetchHooks.length < 0) return;
 
     return Promise.all(this.#preFetchHooks.map(async (preFetchHookConfig) => {
-      if (!preFetchHookConfig.pattern.test(url.toString())) return;
+      if (preFetchHookConfig.pattern instanceof RegExp && !preFetchHookConfig.pattern.test(url.toString())) return;
+      if (Array.isArray(preFetchHookConfig.pattern) && !preFetchHookConfig.pattern.some(pattern => pattern instanceof RegExp && pattern.test(url.toString()))) return;
       if (this.#debug) console.log("Processing pre-fetch hooks for: ", url.toString());
       return preFetchHookConfig.hook(url, options);
     }));
