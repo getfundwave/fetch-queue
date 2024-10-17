@@ -53,8 +53,8 @@ describe("FetchQueue", () => {
     const promises = urls.map(async (url) => fetch(url));
     const responses = await Promise.all(promises);
 
-    expect(responses.filter((r) => r.status === 200)).toHaveLength(3);
-    expect(responses.find((r) => r.status !== 200)).toBeDefined();
+    expect(responses.filter((r: any) => r.status === 200)).toHaveLength(3);
+    expect(responses.find((r: any) => r.status !== 200)).toBeDefined();
   }, TEST_TIMEOUT);
 
   // test
@@ -221,7 +221,7 @@ describe("test case with start and pause queue", () => {
 
     expect(fetchQueue.getQueueLength()).toBe(0);
   }, TEST_TIMEOUT);
-  
+
   // test
   it("execute pre-fetch-hooks", async () => {
     jest.useRealTimers();
@@ -242,5 +242,32 @@ describe("test case with start and pause queue", () => {
     ]);
 
     expect(hook).toHaveBeenCalledTimes(1);
+  }, TEST_TIMEOUT);
+
+  // test
+  it("queue relevant calls for patterns", async () => {
+    jest.useRealTimers();
+
+    const notToBeCalled = jest.fn() as PreFetchHook;
+    const toBeCalled = jest.fn() as PreFetchHook;
+    
+    const fetchQueue = new FetchQueue({ 
+      concurrent: 1,
+      queuingPatterns: [ new RegExp("https://dummyjson.com/products/*") ],
+      preFetchHooks: [
+        { pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook: notToBeCalled },
+        { pattern: new RegExp("https://dummyjson.com/test"), hook: toBeCalled },
+      ]
+    });
+
+    fetchQueue.startQueue();
+    fetchQueue.pauseQueue();
+
+    const fetch = fetchQueue.getFetchMethod();
+    fetch("https://dummyjson.com/products/1"),
+    await fetch("https://dummyjson.com/test"),
+
+    expect(notToBeCalled).toHaveBeenCalledTimes(0);
+    expect(toBeCalled).toHaveBeenCalled();
   }, TEST_TIMEOUT);
 });
