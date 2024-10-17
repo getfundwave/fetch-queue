@@ -1,5 +1,5 @@
 import fetch, { RequestInfo, RequestInit, Response } from "node-fetch";
-import { FetchQueueConfig } from "./interfaces/index.js";
+import { FetchQueueConfig, PreFetchHookConfig } from "./interfaces/index.js";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
  * It ensures that the number of active requests does not exceed a specified limit, and queues any additional requests until a slot becomes available.
@@ -40,6 +40,16 @@ export class FetchQueue {
   #pauseQueue: boolean;
 
   /**
+   * Array of configs for pre-fetch-hooks
+   */
+  #preFetchHooks: PreFetchHookConfig[];
+  
+  /**
+   * Array of regular-expressions evaluate
+   */
+  #queuingPatterns: RegExp[];
+
+  /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
    * If no options are provided, the default concurrent value is set to 3.
    * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
@@ -52,6 +62,10 @@ export class FetchQueue {
     this.#urlsQueued = [];
     this.#urlsExecuting = new Set<string>();
     this.#pauseQueue = options?.pauseQueueOnInit || false;
+    const preFetchHooks = Array.isArray(options?.preFetchHooks) ? options?.preFetchHooks : [];
+    this.#preFetchHooks = preFetchHooks!;
+    const queuingPatterns = Array.isArray(options?.queuingPatterns) ? options?.queuingPatterns : [];
+    this.#queuingPatterns = queuingPatterns!;
 
     if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
@@ -78,6 +92,8 @@ export class FetchQueue {
         throw new Error("Aborted");
       }
 
+      if (this.#preFetchHooks.length) await this.#executePreFetchHook(url, options);
+
       this.#activeRequests++;
       const response: Response = await fetch(url, options);
 
@@ -89,6 +105,20 @@ export class FetchQueue {
       this.#emitRequestCompletedEvent();
     }
   };
+
+  /**
+   * Executes relevant pre-fetch hooks based on url-patterns.
+   */
+  #executePreFetchHook = async (url: URL | RequestInfo, options?: RequestInit) => {
+    if (this.#preFetchHooks.length < 0) return;
+
+    return Promise.all(this.#preFetchHooks.map(async (preFetchHookConfig) => {
+      if (preFetchHookConfig.pattern instanceof RegExp && !preFetchHookConfig.pattern.test(url.toString())) return;
+      if (Array.isArray(preFetchHookConfig.pattern) && !preFetchHookConfig.pattern.some(pattern => pattern instanceof RegExp && pattern.test(url.toString()))) return;
+      if (this.#debug) console.log("Processing pre-fetch hooks for: ", url.toString());
+      return preFetchHookConfig.hook(url, options);
+    }));
+  }
 
   /**
    * Executes the next task in the queue when a fetch request is completed.
@@ -196,13 +226,17 @@ export class FetchQueue {
    * The internal fetch implementation that handles queuing of fetch requests.
    */
   #f_fetch = (() => {
-    return (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+    return (url: RequestInfo | URL, options?: RequestInit) => {
       const controller = new AbortController();
       const executeFetchRequest = (controller: AbortController) => this.#run(url, options, controller);
 
-      if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) {
+      const patternsExistForEvaluation = Boolean(this.#queuingPatterns.length);
+      const bypassQueue = patternsExistForEvaluation && !this.#queuingPatterns.some(pattern => pattern.test(url.toString()));
+
+      if ((this.#activeRequests < this.#concurrent && !this.#pauseQueue) || bypassQueue) {
         return executeFetchRequest(controller);
       }
+
       return new Promise((resolve, reject) => {
         const queueTask = () => {
           executeFetchRequest(controller).then(resolve).catch(reject);
