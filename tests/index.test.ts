@@ -1,5 +1,5 @@
 import { FetchQueue } from "../src/index";
-import { PreFetchHook } from "../src/interfaces";
+import { PreHook } from "../src/interfaces";
 
 const urls = ["https://httpstat.us/500", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
 
@@ -226,11 +226,11 @@ describe("test case with start and pause queue", () => {
   it("execute pre-fetch-hooks", async () => {
     jest.useRealTimers();
 
-    const hook = jest.fn() as PreFetchHook;
+    const hook = jest.fn() as PreHook;
     
     const fetchQueue = new FetchQueue({ 
       concurrent: 1,
-      preFetchHooks: [{ pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook }]
+      pre: [{ pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook }]
     });
 
     fetchQueue.startQueue();
@@ -248,13 +248,13 @@ describe("test case with start and pause queue", () => {
   it("queue relevant calls for patterns", async () => {
     jest.useRealTimers();
 
-    const notToBeCalled = jest.fn() as PreFetchHook;
-    const toBeCalled = jest.fn() as PreFetchHook;
+    const notToBeCalled = jest.fn() as PreHook;
+    const toBeCalled = jest.fn() as PreHook;
     
     const fetchQueue = new FetchQueue({ 
       concurrent: 1,
       queuingPatterns: [ new RegExp("https://dummyjson.com/products/*") ],
-      preFetchHooks: [
+      pre: [
         { pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook: notToBeCalled },
         { pattern: new RegExp("https://dummyjson.com/test"), hook: toBeCalled },
       ]

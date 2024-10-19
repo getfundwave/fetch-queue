@@ -1,12 +1,12 @@
 import { RequestInfo, RequestInit } from "node-fetch";
 
-export type PreFetchHook = (url: URL | RequestInfo, options?: RequestInit) => void;
-export type PreFetchHookConfig = { pattern: RegExp | RegExp[], hook: PreFetchHook };
+export type PreHook = (url: URL | RequestInfo, options?: RequestInit) => void;
+export type Pre = { pattern: RegExp | RegExp[], hook: PreHook };
 
 export type FetchQueueConfig = {
   concurrent: number;
   pauseQueueOnInit?: boolean;
-  preFetchHooks?: PreFetchHookConfig[];
+  pre?: Pre[];
   queuingPatterns?: RegExp[];
   debug?: boolean;
 };

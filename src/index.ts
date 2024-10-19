@@ -1,5 +1,5 @@
 import fetch, { RequestInfo, RequestInit, Response } from "node-fetch";
-import { FetchQueueConfig, PreFetchHookConfig } from "./interfaces/index.js";
+import { FetchQueueConfig, Pre } from "./interfaces/index.js";
 /**
  * The `FetchQueue` class is a utility class that allows for managing and controlling concurrent fetch requests.
  * It ensures that the number of active requests does not exceed a specified limit, and queues any additional requests until a slot becomes available.
@@ -42,7 +42,7 @@ export class FetchQueue {
   /**
    * Array of configs for pre-fetch-hooks
    */
-  #preFetchHooks: PreFetchHookConfig[];
+  pre: Pre[];
   
   /**
    * Array of regular-expressions evaluate
@@ -62,8 +62,8 @@ export class FetchQueue {
     this.#urlsQueued = [];
     this.#urlsExecuting = new Set<string>();
     this.#pauseQueue = options?.pauseQueueOnInit || false;
-    const preFetchHooks = Array.isArray(options?.preFetchHooks) ? options?.preFetchHooks : [];
-    this.#preFetchHooks = preFetchHooks!;
+    const pre = Array.isArray(options?.pre) ? options?.pre : [];
+    this.pre = pre!;
     const queuingPatterns = Array.isArray(options?.queuingPatterns) ? options?.queuingPatterns : [];
     this.#queuingPatterns = queuingPatterns!;
 
@@ -92,7 +92,7 @@ export class FetchQueue {
         throw new Error("Aborted");
       }
 
-      if (this.#preFetchHooks.length) await this.#executePreFetchHook(url, options);
+      if (this.pre.length) await this.#executePre(url, options);
 
       this.#activeRequests++;
       const response: Response = await fetch(url, options);
@@ -109,14 +109,14 @@ export class FetchQueue {
   /**
    * Executes relevant pre-fetch hooks based on url-patterns.
    */
-  #executePreFetchHook = async (url: URL | RequestInfo, options?: RequestInit) => {
-    if (this.#preFetchHooks.length < 0) return;
+  #executePre = async (url: URL | RequestInfo, options?: RequestInit) => {
+    if (this.pre.length < 0) return;
 
-    return Promise.all(this.#preFetchHooks.map(async (preFetchHookConfig) => {
-      if (preFetchHookConfig.pattern instanceof RegExp && !preFetchHookConfig.pattern.test(url.toString())) return;
-      if (Array.isArray(preFetchHookConfig.pattern) && !preFetchHookConfig.pattern.some(pattern => pattern instanceof RegExp && pattern.test(url.toString()))) return;
+    return Promise.all(this.pre.map(async (pre) => {
+      if (pre.pattern instanceof RegExp && !pre.pattern.test(url.toString())) return;
+      if (Array.isArray(pre.pattern) && !pre.pattern.some(pattern => pattern instanceof RegExp && pattern.test(url.toString()))) return;
       if (this.#debug) console.log("Processing pre-fetch hooks for: ", url.toString());
-      return preFetchHookConfig.hook(url, options);
+      return pre.hook(url, options);
     }));
   }
 
