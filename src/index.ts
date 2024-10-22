@@ -92,9 +92,9 @@ export class FetchQueue {
         throw new Error("Aborted");
       }
 
-      if (this.pre.length) await this.#executePre(url, options);
-
       this.#activeRequests++;
+
+      if (this.pre.length) await this.#executePre(url, options);
       const response: Response = await fetch(url, options);
 
       if (this.#debug) this.#urlsExecuting.delete(url.toString());
