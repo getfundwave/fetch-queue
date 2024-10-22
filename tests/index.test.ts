@@ -1,6 +1,7 @@
 import { FetchQueue } from "../src/index";
+import { PreHook } from "../src/interfaces";
 
-const urls = ["https://dummy.restapiexample.com/api/v1/fail", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
+const urls = ["https://httpstat.us/500", "https://dummyjson.com/products/1", "https://dummyjson.com/products/2", "https://dummyjson.com/products/3"];
 
 async function wait(time: number = 1200) {
   return new Promise((resolve) => {
@@ -52,8 +53,8 @@ describe("FetchQueue", () => {
     const promises = urls.map(async (url) => fetch(url));
     const responses = await Promise.all(promises);
 
-    expect(responses.filter((r) => r.status === 200)).toHaveLength(3);
-    expect(responses.find((r) => r.status !== 200)).toBeDefined();
+    expect(responses.filter((r: any) => r.status === 200)).toHaveLength(3);
+    expect(responses.find((r: any) => r.status !== 200)).toBeDefined();
   }, TEST_TIMEOUT);
 
   // test
@@ -219,5 +220,54 @@ describe("test case with start and pause queue", () => {
     await Promise.all(promises);
 
     expect(fetchQueue.getQueueLength()).toBe(0);
+  }, TEST_TIMEOUT);
+
+  // test
+  it("execute pre-fetch-hooks", async () => {
+    jest.useRealTimers();
+
+    const hook = jest.fn() as PreHook;
+    
+    const fetchQueue = new FetchQueue({ 
+      concurrent: 1,
+      pre: [{ pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook }]
+    });
+
+    fetchQueue.startQueue();
+
+    const fetch = fetchQueue.getFetchMethod();
+    await Promise.allSettled([
+      fetch("https://dummyjson.com/products/1"),
+      fetch("https://dummyjson.com/test"),
+    ]);
+
+    expect(hook).toHaveBeenCalledTimes(1);
+  }, TEST_TIMEOUT);
+
+  // test
+  it("queue relevant calls for patterns", async () => {
+    jest.useRealTimers();
+
+    const notToBeCalled = jest.fn() as PreHook;
+    const toBeCalled = jest.fn() as PreHook;
+    
+    const fetchQueue = new FetchQueue({ 
+      concurrent: 1,
+      queuingPatterns: [ new RegExp("https://dummyjson.com/products/*") ],
+      pre: [
+        { pattern: new RegExp("https://dummyjson.com/products/\\d+"), hook: notToBeCalled },
+        { pattern: new RegExp("https://dummyjson.com/test"), hook: toBeCalled },
+      ]
+    });
+
+    fetchQueue.startQueue();
+    fetchQueue.pauseQueue();
+
+    const fetch = fetchQueue.getFetchMethod();
+    fetch("https://dummyjson.com/products/1"),
+    await fetch("https://dummyjson.com/test"),
+
+    expect(notToBeCalled).toHaveBeenCalledTimes(0);
+    expect(toBeCalled).toHaveBeenCalled();
   }, TEST_TIMEOUT);
 });
