@@ -73,6 +73,13 @@ export class FetchQueue {
   }
 
   /**
+   * handle to log message if debug is set to true
+   **/
+  #debugLog = (...params: Parameters<typeof console.log>) => {
+    if (this.#debug) console.log("[fetchq]", ...params);
+  }
+
+  /**
    * Executes a fetch request with the specified URL, fetch function, and options.
    * Increments the activeRequests count and handles queuing of additional requests if the maximum concurrent limit is reached.
    * @param url - The URL for the fetch request.
@@ -84,11 +91,11 @@ export class FetchQueue {
     try {
       if (this.#debug) {
         this.#urlsExecuting.add(url.toString());
-        console.log("executing", this.#urlsExecuting);
+        this.#debugLog("executing request: ", url.toString());
       }
 
       if (!!controller && controller.signal.aborted) {
-        if (this.#debug) this.#urlsExecuting.delete(url.toString());
+        this.#debugLog("aborted request: ", this.#urlsExecuting.delete(url.toString()))
         throw new Error("Aborted");
       }
 
@@ -101,7 +108,8 @@ export class FetchQueue {
 
       return response;
     } finally {
-      this.#activeRequests--;
+      if (this.#activeRequests === 0) console.warn("[DANGER] active-requests shouldn't be less than 0", url.toString());
+      else this.#activeRequests--;
       this.#emitRequestCompletedEvent();
     }
   };
@@ -113,9 +121,14 @@ export class FetchQueue {
     if (this.pre.length < 0) return;
 
     return Promise.all(this.pre.map(async (pre) => {
-      if (pre.pattern instanceof RegExp && !pre.pattern.test(url.toString())) return;
-      if (Array.isArray(pre.pattern) && !pre.pattern.some(pattern => pattern instanceof RegExp && pattern.test(url.toString()))) return;
-      if (this.#debug) console.log("Processing pre-fetch hooks for: ", url.toString());
+      const regexMatchFailed = pre.pattern instanceof RegExp && !pre.pattern.test(url.toString());
+      const regexMatchesFailed = Array.isArray(pre.pattern) && !pre.pattern.some(pattern => pattern instanceof RegExp && pattern.test(url.toString()));
+      const matchFailed = pre.pattern instanceof RegExp ? regexMatchFailed : regexMatchesFailed;
+
+      this.#debugLog("match result for %s", url.toString(), pre.pattern, { matchFailed, regexMatchFailed, regexMatchesFailed });
+      if (matchFailed) return;
+
+      this.#debugLog("processing pre-hooks @ ", url.toString());
       return pre.hook(url, options);
     }));
   }
@@ -124,12 +137,13 @@ export class FetchQueue {
    * Executes the next task in the queue when a fetch request is completed.
    */
   #emitRequestCompletedEvent = (): void => {
-    if (this.#debug) console.log("queue", this.#urlsQueued);
-
-    if (this.#queue.length <= 0 || this.#pauseQueue) return;
+    if (this.#pauseQueue) return this.#debugLog("queue paused! %d to be processed after resumption", this.#queue.length);
+    if (this.#queue.length <= 0) return this.#debugLog("nothing in queue to process");
 
     this.#urlsQueued.shift();
     const nextTask = this.#queue.shift();
+
+    this.#debugLog("moving to next-item in queue", { activeRequests: this.#activeRequests, queueLength: this.#queue?.length });
     nextTask!();
   };
 
@@ -233,6 +247,8 @@ export class FetchQueue {
       const patternsExistForEvaluation = Boolean(this.#queuingPatterns.length);
       const bypassQueue = patternsExistForEvaluation && !this.#queuingPatterns.some(pattern => pattern.test(url.toString()));
 
+      if (this.#activeRequests < this.#concurrent && !this.#pauseQueue) this.#debugLog("bandwidth available! executing:", url.toString());
+      else if (bypassQueue) this.#debugLog("bypassing queue for:", url.toString());
       if ((this.#activeRequests < this.#concurrent && !this.#pauseQueue) || bypassQueue) {
         return executeFetchRequest(controller);
       }
@@ -241,6 +257,7 @@ export class FetchQueue {
         const queueTask = () => {
           executeFetchRequest(controller).then(resolve).catch(reject);
         };
+        this.#debugLog("request queued:", url.toString());
         this.#queue.push(queueTask);
         this.#urlsQueued.push({ url: url.toString(), controller });
       });
