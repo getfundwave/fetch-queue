@@ -28,6 +28,7 @@ export class FetchQueue {
   /**
    * A queue of tasks to be executed when a slot becomes available for a new fetch request.
    */
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   #queue: Record<string, { controller: AbortController; promise: () => Promise<Response>; resolve: (value: unknown) => void; reject: (reason?: any) => void }> | undefined;
 
   /**
@@ -284,6 +285,7 @@ export class FetchQueue {
             resolveFnFromPrevQueue(value);
           };
 
+          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
           rejectFn = (reason?: any) => {
             reject(reason);
             rejectFnFromPrevQueue(reason);
