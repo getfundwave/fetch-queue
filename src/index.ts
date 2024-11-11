@@ -264,6 +264,7 @@ export class FetchQueue {
         return executeFetchRequest(controller);
       }
 
+      // queue map key for the promise
       const requestId = JSON.stringify({
         url,
         options: {
@@ -273,22 +274,23 @@ export class FetchQueue {
       });
 
       return new Promise((resolve, reject) => {
-        let resolveFn = resolve;
-        let rejectFn = reject;
+        let resolveHandler = resolve;
+        let rejectHandler = reject;
 
+        // if promise exists in queue, then update the promise resolve and reject methods
         if (this.#queueKey.includes(requestId) && this.#queue?.[requestId]?.promise) {
-          const resolveFnFromPrevQueue = this.#queue[requestId].resolve;
-          const rejectFnFromPrevQueue = this.#queue[requestId].reject;
+          const previousResolveHandler = this.#queue[requestId].resolve;
+          const previousRejectHandler = this.#queue[requestId].reject;
 
-          resolveFn = (value: unknown) => {
+          resolveHandler = (value: unknown) => {
             resolve(value);
-            resolveFnFromPrevQueue(value);
+            previousResolveHandler(value);
           };
 
           /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-          rejectFn = (reason?: any) => {
+          rejectHandler = (reason?: any) => {
             reject(reason);
-            rejectFnFromPrevQueue(reason);
+            previousRejectHandler(reason);
           };
         }
 
@@ -296,7 +298,8 @@ export class FetchQueue {
 
         this.#debugLog("request queued:", url.toString());
 
-        this.#queue = { ...this.#queue, [requestId]: { controller, promise: queueTask, resolve: resolveFn, reject: rejectFn } };
+        // store promise in queue
+        this.#queue = { ...this.#queue, [requestId]: { controller, promise: queueTask, resolve: resolveHandler, reject: rejectHandler } };
         this.#queueKey = Object.keys(this.#queue);
       });
     };
