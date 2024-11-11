@@ -28,7 +28,7 @@ export class FetchQueue {
   /**
    * A queue of tasks to be executed when a slot becomes available for a new fetch request.
    */
-  #queue: Record<string, { controller: AbortController; promise: any }> | undefined;
+  #queue: Record<string, { controller: AbortController; promise: () => Promise<Response>; resolve: (value: unknown) => void; reject: (reason?: any) => void }> | undefined;
 
   /**
    * An array of strings representing the URLs in the queue.
@@ -144,12 +144,12 @@ export class FetchQueue {
     if (this.#pauseQueue) return this.#debugLog("queue paused! %d to be processed after resumption", this.#queueKey.length);
 
     const key = this.#queueKey.shift()!;
-    const nextTask = this.#queue[key];
+    const nextTask = this.#queue?.[key];
 
-    delete this.#queue[key];
+    nextTask.promise().then(nextTask.resolve).catch(nextTask.reject);
 
     this.#debugLog("moving to next-item in queue", { activeRequests: this.#activeRequests, queueLength: this.#queueKey.length });
-    nextTask.promise();
+    delete this.#queue?.[key];
   };
 
   /**
@@ -206,10 +206,8 @@ export class FetchQueue {
 
       if (!urlPattern) request.controller.abort();
       else if (!!urlPattern && url.match(urlPattern)) request.controller.abort();
-    }
 
-    for (const requestId of this.#queueKey) {
-      this.#queue[requestId].promise();
+      request.promise().then(request.resolve).catch(request.reject);
     }
 
     this.#queue = undefined;
@@ -238,7 +236,7 @@ export class FetchQueue {
    * @returns Length of queue
    */
   public getQueueLength(): number {
-    return this.#queueKey.length;
+    return Object.keys(this.#queue || {}).length;
   }
 
   /**
@@ -265,17 +263,38 @@ export class FetchQueue {
         return executeFetchRequest(controller);
       }
 
-      return new Promise((resolve, reject) => {
-        const requestId = JSON.stringify({ url });
+      const requestId = JSON.stringify({
+        url,
+        options: {
+          body: options?.body,
+          method: options?.method,
+        },
+      });
 
-        let queueTask = () => executeFetchRequest(controller).then(resolve).catch(reject);
-        if (this.#queueKey.includes(requestId)) {
-          queueTask = () => this.#queue![requestId].promise().then(resolve).catch(reject);
+      return new Promise((resolve, reject) => {
+        let resolveFn = resolve;
+        let rejectFn = reject;
+
+        if (this.#queueKey.includes(requestId) && this.#queue?.[requestId]?.promise) {
+          const resolveFnFromPrevQueue = this.#queue[requestId].resolve;
+          const rejectFnFromPrevQueue = this.#queue[requestId].reject;
+
+          resolveFn = (value: unknown) => {
+            resolve(value);
+            resolveFnFromPrevQueue(value);
+          };
+
+          rejectFn = (reason?: any) => {
+            reject(reason);
+            rejectFnFromPrevQueue(reason);
+          };
         }
+
+        const queueTask = () => executeFetchRequest(controller);
 
         this.#debugLog("request queued:", url.toString());
 
-        this.#queue = { ...this.#queue, [requestId]: { controller, promise: queueTask } };
+        this.#queue = { ...this.#queue, [requestId]: { controller, promise: queueTask, resolve: resolveFn, reject: rejectFn } };
         this.#queueKey = Object.keys(this.#queue);
       });
     };
