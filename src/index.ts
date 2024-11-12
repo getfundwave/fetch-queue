@@ -145,9 +145,9 @@ export class FetchQueue {
     if (this.#pauseQueue) return this.#debugLog("queue paused! %d to be processed after resumption", this.#queueKey.length);
 
     const key = this.#queueKey.shift()!;
-    const nextTask = this.#queue?.[key];
+    const request = this.#queue?.[key];
 
-    nextTask.promise().then(nextTask.resolve).catch(nextTask.reject);
+    request.promise().then(request.resolve).catch(request.reject);
 
     this.#debugLog("moving to next-item in queue", { activeRequests: this.#activeRequests, queueLength: this.#queueKey.length });
     delete this.#queue?.[key];
