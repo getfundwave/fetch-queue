@@ -152,7 +152,7 @@ export class FetchQueue {
     this.#debugLog("moving to next-item in queue", { activeRequests: this.#activeRequests, queueLength: this.#queueKey.length });
     delete this.#queue?.[key];
 
-    if (!Boolean(this.#queueKey.length) || !Boolean(Object.keys(this.#queue).length)) {
+    if (this.#queueKey.length === 0 || Object.keys(this.#queue).length === 0) {
       this.#queue = undefined;
     }
   };
