@@ -144,13 +144,13 @@ export class FetchQueue {
     if (!this.#queue || this.#queueKey.length <= 0) return this.#debugLog("nothing in queue to process");
     if (this.#pauseQueue) return this.#debugLog("queue paused! %d to be processed after resumption", this.#queueKey.length);
 
-    const key = this.#queueKey.shift()!;
-    const request = this.#queue?.[key];
+    const requestKey = this.#queueKey.shift()!;
+    const request = this.#queue?.[requestKey];
 
     request.promise().then(request.resolve).catch(request.reject);
 
     this.#debugLog("moving to next-item in queue", { activeRequests: this.#activeRequests, queueLength: this.#queueKey.length });
-    delete this.#queue?.[key];
+    delete this.#queue?.[requestKey];
 
     if (this.#queueKey.length === 0 || Object.keys(this.#queue).length === 0) {
       this.#queue = undefined;
@@ -205,9 +205,9 @@ export class FetchQueue {
   public emptyQueue(urlPattern?: RegExp) {
     if (!this.#queue) return;
 
-    for (const requestId of this.#queueKey) {
-      const request = this.#queue[requestId];
-      const url = JSON.parse(requestId).url;
+    for (const requestKey of this.#queueKey) {
+      const request = this.#queue[requestKey];
+      const url = JSON.parse(requestKey).url;
 
       if (!urlPattern) request.controller.abort();
       else if (!!urlPattern && url.match(urlPattern)) request.controller.abort();
@@ -269,7 +269,7 @@ export class FetchQueue {
       }
 
       // queue map key for the promise
-      const requestId = JSON.stringify({
+      const requestKey = JSON.stringify({
         url,
         options: {
           body: options?.body,
@@ -282,9 +282,9 @@ export class FetchQueue {
         let rejectHandler = reject;
 
         // if promise exists in queue, then update the promise resolve and reject methods
-        if (this.#queueKey.includes(requestId) && this.#queue?.[requestId]?.promise) {
-          const previousResolveHandler = this.#queue[requestId].resolve;
-          const previousRejectHandler = this.#queue[requestId].reject;
+        if (this.#queueKey.includes(requestKey) && this.#queue?.[requestKey]?.promise) {
+          const previousResolveHandler = this.#queue[requestKey].resolve;
+          const previousRejectHandler = this.#queue[requestKey].reject;
 
           resolveHandler = (value: unknown) => {
             resolve(value);
@@ -303,7 +303,7 @@ export class FetchQueue {
         this.#debugLog("request queued:", url.toString());
 
         // store promise in queue
-        this.#queue = { ...this.#queue, [requestId]: { controller, promise: queueTask, resolve: resolveHandler, reject: rejectHandler } };
+        this.#queue = { ...this.#queue, [requestKey]: { controller, promise: queueTask, resolve: resolveHandler, reject: rejectHandler } };
         this.#queueKey = Object.keys(this.#queue);
       });
     };
