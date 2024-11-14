@@ -46,7 +46,7 @@ export class FetchQueue {
   pre: Pre[];
 
   /**
-   * Array of regular-expressions evaluate
+   * Array of regex to queue matching requests; others run immediately.
    */
   #queuingPatterns: RegExp[];
 
