@@ -51,7 +51,7 @@ export class FetchQueue {
   #queuingPatterns: RegExp[];
 
   /**
-   * Array of keys of parameters to the fetch method to build the queue key
+   * Array of fetch parameters to build the queue key."
    */
   #keyBuilderParams: Array<string>;
 
