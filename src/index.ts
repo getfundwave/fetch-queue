@@ -28,7 +28,6 @@ export class FetchQueue {
   /**
    * A queue of tasks to be executed when a slot becomes available for a new fetch request.
    */
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   #queue: Record<string, { controller: AbortController; promise: () => Promise<Response>; resolve: (value: unknown) => void; reject: (reason?: any) => void }> | undefined;
 
   /**
@@ -52,6 +51,11 @@ export class FetchQueue {
   #queuingPatterns: RegExp[];
 
   /**
+   * Array of keys of parameters to the fetch method to build the queue key
+   */
+  #keyBuilderParams: Array<string>;
+
+  /**
    * Initializes a new instance of the FetchQueue class with an optional FetchQueueConfig object.
    * If no options are provided, the default concurrent value is set to 3.
    * @param {FetchQueueConfig} options - The FetchQueueConfig object containing the concurrent value.
@@ -68,6 +72,8 @@ export class FetchQueue {
     this.pre = pre!;
     const queuingPatterns = Array.isArray(options?.queuingPatterns) ? options?.queuingPatterns : [];
     this.#queuingPatterns = queuingPatterns!;
+
+    this.#keyBuilderParams = options?.keyBuilderParams || ["url", "options.method", "options.body"];
 
     if (typeof this.#concurrent !== "number" || this.#concurrent <= 0) {
       throw new Error("Concurrent should be a number greater than zero.");
@@ -156,6 +162,30 @@ export class FetchQueue {
       this.#queue = undefined;
     }
   };
+
+  /**
+   * Builds a unique key for a fetch request based on the provided parameters.
+   *
+   * @param parameters - An object containing the parameters to be included in the key.
+   * @returns A string representing the unique key for the fetch request.
+   */
+  #keyBuilder(parameters: Record<string, any>): string {
+    const requestKey: Record<string, any> = {};
+
+    this.#keyBuilderParams.forEach((key) => {
+      const nestedKeys = key?.split(".");
+      const nestedLength = nestedKeys.length;
+      const value = nestedKeys.reduce((obj, k) => (obj ? obj?.[k] : null), parameters);
+
+      nestedKeys.reduce((acc, curr, index) => {
+        acc[curr] = index === nestedLength - 1 ? value : {};
+
+        return acc[curr];
+      }, requestKey);
+    });
+
+    return JSON.stringify(requestKey);
+  }
 
   /**
    * Returns the custom fetch function used by the FetchQueue class to handle queuing of fetch requests.
@@ -269,13 +299,7 @@ export class FetchQueue {
       }
 
       // queue map key for the promise
-      const requestKey = JSON.stringify({
-        url,
-        options: {
-          body: options?.body,
-          method: options?.method,
-        },
-      });
+      const requestKey = this.#keyBuilder({ url, options });
 
       return new Promise((resolve, reject) => {
         let resolveHandler = resolve;
@@ -291,7 +315,6 @@ export class FetchQueue {
             previousResolveHandler(value);
           };
 
-          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
           rejectHandler = (reason?: any) => {
             reject(reason);
             previousRejectHandler(reason);
