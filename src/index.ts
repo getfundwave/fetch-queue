@@ -311,13 +311,13 @@ export class FetchQueue {
           const previousRejectHandler = this.#queue[requestKey].reject;
 
           resolveHandler = (value: unknown) => {
-            resolve(value);
             previousResolveHandler(value);
+            resolve(value);
           };
 
           rejectHandler = (reason?: any) => {
-            reject(reason);
             previousRejectHandler(reason);
+            reject(reason);
           };
         }
 
