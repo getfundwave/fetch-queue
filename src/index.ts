@@ -169,7 +169,7 @@ export class FetchQueue {
    * @param parameters - An object containing the parameters to be included in the key.
    * @returns A string representing the unique key for the fetch request.
    */
-  #keyBuilder(parameters: Record<string, any>): string {
+  #keyBuilder = (parameters: Record<string, any>) => {
     const requestKey: Record<string, any> = {};
 
     this.#keyBuilderParams.forEach((key) => {
@@ -185,7 +185,7 @@ export class FetchQueue {
     });
 
     return JSON.stringify(requestKey);
-  }
+  };
 
   /**
    * Returns the custom fetch function used by the FetchQueue class to handle queuing of fetch requests.
