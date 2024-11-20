@@ -270,4 +270,32 @@ describe("test case with start and pause queue", () => {
     expect(notToBeCalled).toHaveBeenCalledTimes(0);
     expect(toBeCalled).toHaveBeenCalled();
   }, TEST_TIMEOUT);
+
+
+  it("reference duplicate fetch to the original fetch in queue", async () => {
+    const fetchQueue = new FetchQueue({ concurrent: 2, debug: false });
+    const fetch = fetchQueue.getFetchMethod();
+    fetchQueue.pauseQueue();
+
+    const mockFetch = jest.fn().mockImplementation(async (url, urlIndex) => {
+      if (urlIndex === 7) {
+        expect(fetchQueue.getQueueLength()).toBe(5);
+        fetchQueue.startQueue();
+        expect(fetchQueue.getQueueLength()).toBe(4);
+      }
+
+      if (urlIndex === 5) {
+        const options = { method: "POST" };
+        return Promise.resolve(fetch(url, options));
+      }
+
+      return Promise.resolve(fetch(url));
+    });
+
+    const duplicateUrls = [...urls, ...urls];
+    const promises = duplicateUrls.map((url, urlIndex) => mockFetch(url, urlIndex));
+    const resp = await Promise.all(promises);
+
+    expect(resp.length).toBe(8);
+  }, TEST_TIMEOUT);
 });

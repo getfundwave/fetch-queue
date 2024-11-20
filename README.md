@@ -23,10 +23,14 @@ const fetch = MyFetchQueue.getFetchMethod();
 
 ## Options
 
-| `Property` | `Description`                       | `Default Value` |
-| ---------- | ----------------------------------- | --------------- |
-| concurrent | number of concurrent fetch requests | 3               |
-| debug      | set debug mode                      | false           |
+| `Property`        | `Description`                             | `Default Value`                           |
+| ----------------- | -------------------------------------     | --------------                            |
+| concurrent        | number of concurrent fetch requests       | 3                                         |
+| pauseQueueOnInit  | start queue with a paused state           | false                                     |
+| pre               | array of configs for pre-fetch-hooks      | []                                        |
+| queuingPatterns   | array of regex to queue matching requests | []                                        |
+| debug             | set debug mode                            | false                                     |
+| keyBuilderParams  | to build a unique key for queue           | ["url", "options.method", "options.body"] |
 
 ## Usage
 
