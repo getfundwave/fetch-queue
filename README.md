@@ -30,7 +30,7 @@ const fetch = MyFetchQueue.getFetchMethod();
 | pre               | array of configs for pre-fetch-hooks      | []                                        |
 | queuingPatterns   | array of regex to queue matching requests | []                                        |
 | debug             | set debug mode                            | false                                     |
-| keyBuilderParams  | to build a unique key for queu            | ["url", "options.method", "options.body"] |
+| keyBuilderParams  | to build a unique key for queue           | ["url", "options.method", "options.body"] |
 
 ## Usage
 
