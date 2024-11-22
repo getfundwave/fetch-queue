@@ -311,8 +311,9 @@ export class FetchQueue {
           const previousRejectHandler = this.#queue[requestKey].reject;
 
           resolveHandler = (value: unknown) => {
+            const clonedResponse = (value as Response).clone();
             previousResolveHandler(value);
-            resolve(value);
+            resolve(clonedResponse);
           };
 
           rejectHandler = (reason?: any) => {
