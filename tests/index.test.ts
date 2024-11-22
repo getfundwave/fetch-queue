@@ -294,8 +294,11 @@ describe("test case with start and pause queue", () => {
 
     const duplicateUrls = [...urls, ...urls];
     const promises = duplicateUrls.map((url, urlIndex) => mockFetch(url, urlIndex));
-    const resp = await Promise.all(promises);
+    const responses = await Promise.all(promises);
 
-    expect(resp.length).toBe(8);
+    expect(responses.length).toBe(8);
+    responses.forEach((resp) => {
+      if (resp.ok) expect(resp.json()).resolves.not.toBeNull();
+    })
   }, TEST_TIMEOUT);
 });
