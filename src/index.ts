@@ -312,7 +312,7 @@ export class FetchQueue {
 
           resolveHandler = (value: unknown) => {
             previousResolveHandler(value);
-            resolve(value);
+            resolve((value as Response)?.clone());
           };
 
           rejectHandler = (reason?: any) => {
